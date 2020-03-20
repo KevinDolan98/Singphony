@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <title>Singphony Main Page</title>
     <link href="CSS/Style.css" type="text/css" rel="stylesheet" />
-    <script src='JS/main.js' type='text/javascript' /></script>
   </head>
 
   <body>
@@ -47,11 +46,16 @@
       <img class="logo" src="Images/SingphonyLogo.png" alt="Singphony Logo" title="Singphony Logo">
     </div>
     <div class="wrapper">
-      <canvas class="visualizer" width="640" height="100"></canvas>
+      <canvas id="canvas1" class="leftchannel" width="640" height="100"></canvas>
     </div>
+    <div class="wrapper">
+      <canvas id="canvas2" class="rightchannel" width="640" height="100"></canvas>
+    </div>
+    <div id="time"></div>
+    <div id="frequency"></div>
     <div class="div">
       <button id="addTrack" class="button" onclick="javascript: addTrack()">Add Track</button>
-      <button id="record" class="button" onclick="javascript: init()">Record</button>
+      <button id="record" class="button" onclick="javascript: record()">Record</button>
       <button id="stop" class="button" onclick="javascript: stop()">Stop</button>
       <button id="play" class="button" onclick="javascript: play()">Play</button>
       <button id="pause" class="button" onclick="javascript: pause()">Pause</button>
@@ -60,4 +64,5 @@
     <audio id=recordedAudio></audio>
 
   </body>
+  <script src='JS/main.js' type='text/javascript' /></script>
 </html>
