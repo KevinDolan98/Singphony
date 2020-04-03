@@ -1,249 +1,207 @@
-/*
-function init() {
-  //heading.textContent = 'Singphony';
-  // Older browsers might not implement mediaDevices at all, so we set an empty object first
-  if (navigator.mediaDevices === undefined) {
-    navigator.mediaDevices = {};
-  }
-
-  // Some browsers partially implement mediaDevices. We can't just assign an object
-  // with getUserMedia as it would overwrite existing properties.
-  // Here, we will just add the getUserMedia property if it's missing.
-  if (navigator.mediaDevices.getUserMedia === undefined) {
-    navigator.mediaDevices.getUserMedia = function(constraints) {
-
-      // First get ahold of the legacy getUserMedia, if present
-      var getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-
-      // Some browsers just don't implement it - return a rejected promise with an error
-      // to keep a consistent interface
-      if (!getUserMedia) {
-        return Promise.reject(new Error('getUserMedia is not implemented in this browser'));
-      }
-
-      // Otherwise, wrap the call to the old navigator.getUserMedia with a Promise
-      return new Promise(function(resolve, reject) {
-        getUserMedia.call(navigator, constraints, resolve, reject);
-      });
-    }
-  }
-}
-
-  // set up forked web audio context, for multiple browsers
-    // window. is needed otherwise Safari explodes
-
-
-    //set up the different audio nodes we will use for the app
-    var audioBuffer = audioCtx.createBuffer(2, 22050, 44100);
-
-    // set up canvas context for visualizer
-    var canvas1 = document.getElementById('canvas1');
-    var canvasCtx1 = canvas1.getContext("2d");
-    var canvas2 = document.getElementById('canvas2');
-    var canvasCtx2 = canvas2.getContext("2d");
-    var intendedWidth = document.querySelector('.wrapper').clientWidth;
-    canvas1.setAttribute('width',intendedWidth);
-    canvas2.setAttribute('width',intendedWidth);
-
-  //main block for doing the audio recording
-  if (navigator.mediaDevices.getUserMedia) {
-     console.log('getUserMedia supported.');
-     var constraints = {audio: true}
-     navigator.mediaDevices.getUserMedia (constraints)
-        .then(function(stream) {
-          var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          var sampleRate = audioCtx.sampleRate;
-          var audioInput = audioCtx.createMediaStreamSource(stream)
-          var aud = audioInput.context;
-          var bufferSize = 2048;
-          var recorder = (audioCtx.createScriptProcessor || audioCtx.createJavaScriptNode).call(aud, 2048, 2, 2);
-          console.log ('about to recording');
-          recorder.onaudioprocess = function(stream){
-            console.log ('recording');
-            var left = stream.inputBuffer.getChannelData (0);
-            console.log (left);
-            var right = stream.inputBuffer.getChannelData (1);
-            // we clone the samples
-            leftchannel.push (new Float32Array (left));
-            rightchannel.push (new Float32Array (right));
-            recordingLength += bufferSize;
-          }
-
-             var recording = audioCtx.createMediaStreamSource(stream)
-             let context = recording.contect;
-             let node = (context.createScriptProcessor || context.createJavaScriptNode).call(context, bufferLen, numChannels, numChannels);
-             //recording.buffer = audioBuffer;
-             visualise(node);
-
-        })
-        .catch( function(err) { console.log('The following gUM error occured: ' + err);})
-  } else {
-     console.log('getUserMedia not supported on your browser!');
-  }
-
-
-  function visualise(buf){
-    const leftIn = new Float32Array(4096);
-    const rightIn = new Float32Array(4096);
-    buf.copyFromChannel(leftIn, 0);
-    buf.copyFromChannel(rightIn, 1);
-
-    for(var i = 0; i < leftIn.length; i++)
+  // Set up Microphone class
+  class Microphone
+  {
+    constructor(sampleRate = 44100, bufferLength = 4096) // sampleRate = 44100, bufferLength = 4096
     {
-      canvasCtx1.font = "30px Arial"
-      canvasCtx1.fillText(leftIn[i], 10, 50);
-      console.log(leftIn[i])
-      canvasCtx2.font = "30px Arial"
-      canvasCtx2.fillText(rightIn[i], 10, 50);
+      console.log("constructor called");
+      this._sampleRate = sampleRate; // sampleRate is the sampling rate of the microphone
+      // Shorter buffer length results in a more responsive visualization
+      this._bufferLength = bufferLength; // bufferLength is how long each buffer of audio data is for processing
+
+      this._audioContext = new AudioContext(); // set up a new audioContext
+      this._bufferSource = null; //
+      this._streamSource = null; //
+      this._scriptNode = null; //
+
+      this._realtimeBuffer = []; //
+      this._audioBuffer = []; //
+      this._audioBufferSize = 0; //
+
+      this._isRecording = false; // flag to say if a recording is recording or not
+
+      this._setup(this._bufferLength, this._isRecording); // call setup function passing the length of the audio buffers and the recording flag
+    };
+
+    get realtimeBuffer() // Getter function for the realtimeBuffer property [Not called]
+    {
+      console.log("realtimeBuffer called");
+      return this._realtimeBuffer;
+    }
+
+    get isRecording() // Getter function for the isRecording property
+    {
+      console.log("isRecording called");
+      return this._isRecording;
+    }
+
+    _validateSettings()
+    {
+      console.log("_validateSettings called");
+      if (!Number.isInteger(this._sampleRate) || this._sampleRate < 22050 || this._sampleRate > 96000) { // Check if the sample rate is an integer between 22050 and 96000
+        throw "Please input an integer samplerate value between 22050 to 96000"; // If it isn't throw this error
+    }
+
+    this._validateBufferLength();
+    }
+
+    _validateBufferLength()
+    {
+      console.log("_validateBufferLength called");
+      const acceptedBufferLength = [256, 512, 1024, 2048, 4096, 8192, 16384] // list of acceptable buffer lengths
+      if (!acceptedBufferLength.includes(this._bufferLength)) // checks if the given buffer length is within the acceptable range
+      {
+        throw "Please ensure that the buffer length is one of the following values: " + acceptedBufferLength; // throw an error if the buffer length is out of range
+      }
+    }
+
+    _setup(bufferLength, isRecording)
+    {
+      console.log("_setup called");
+      this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
+
+      // Get microphone access
+      if (navigator.mediaDevices) {
+        navigator.mediaDevices.getUserMedia({audio: true}).then((stream) => { // request access to the users microphone and set up a stream
+          this._streamSource = this._audioContext.createMediaStreamSource(stream); // create a stream source
+          this._scriptNode = this._audioContext.createScriptProcessor(bufferLength, 1, 1); // create a script processor node of bufferLength 4096 and only 1 channel for direct audio processing
+          this._bufferSource = this._audioContext.createBufferSource(); // cretes anaudio buffer source node which is can be use to play/access data in an audio buffer
+          this._streamSource.connect(this._scriptNode); // connect the stream to ScriptProcessor (Analysis) node
+          this._bufferSource.connect(this._audioContext.destination); // connect the buffer to the destination (speaker) node
+        }).catch ((e) => {
+          throw "Microphone: " + e.name + ". " + e.message; // throw errors with message
+        })
+      } else {
+        throw "MediaDevices are not supported in this browser, please update your browser"; // throw error if mediaDevices is not supported
+      }
+    }
+
+  processAudio() {
+    console.log("processAudio called");
+    // Whenever onaudioprocess event is dispatched it creates a buffer array with the length bufferLength
+    this._scriptNode.onaudioprocess = (audioProcessingEvent) => {
+      if (!this._isRecording) return;
+      //console.log("ONAUDIOPROCESS event occurred!");
+      this._realtimeBuffer = audioProcessingEvent.inputBuffer.getChannelData(0);
+
+      // Create an array of buffer array until the user finishes recording
+      this._audioBuffer.push(this._realtimeBuffer);
+      this._audioBufferSize += this._bufferLength;
     }
   }
 
-*/
+  playback() {
+    console.log("playback called");
+    this._setBuffer().then((bufferSource) => {
+      bufferSource.start();
+    }).catch((e) => {
+      throw "Error playing back audio: " + e.name + ". " + e.message;
+    })
+  }
 
-// set up canvas context for visualizer
-var canvas1 = document.getElementById('canvas1');
-var canvasCtx1 = canvas1.getContext("2d");
-var canvas2 = document.getElementById('canvas2');
-var canvasCtx2 = canvas2.getContext("2d");
-var intendedWidth = document.querySelector('.wrapper').clientWidth;
-canvas1.setAttribute('width',intendedWidth);
-canvas2.setAttribute('width',intendedWidth);
+  _setBuffer() {
+    console.log("_setBuffer called");
+    return new Promise((resolve, reject) => {
+      // New AudioBufferSourceNode needs to be created after each call to start()
+      this._bufferSource = this._audioContext.createBufferSource();
+      this._bufferSource.connect(this._audioContext.destination);
 
-function addTrack()
-{
-  //alert("This button will add a new melody line to the score");
-  console.log("addTrack was clicked");
-}
+      console.log(this._audioBuffer);
+      console.log(this._audioBufferSize);
+      let mergedBuffer = this._mergeBuffers(this._audioBuffer, this._audioBufferSize);
+      console.log(mergedBuffer);
+      let arrayBuffer = this._audioContext.createBuffer(1, mergedBuffer.length, this._sampleRate);
+      let buffer = arrayBuffer.getChannelData(0);
 
-function record()
-{
-      var audioContext = new AudioContext();
-      console.log("audio is starting up ...");
-      var BUFF_SIZE_RENDERER = 4096;
-      var SIZE_SHOW = 3; // number of array elements to show in console output
-      var audioInput = null,
-      microphone_stream = null,
-      gain_node = null,
-      script_processor_node = null,
-      script_processor_analysis_node = null,
-      analyser_node = null;
-
-      if (!navigator.getUserMedia)
-          navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
-      navigator.mozGetUserMedia || navigator.msGetUserMedia;
-
-      if (navigator.getUserMedia){
-
-          navigator.getUserMedia({audio:true},
-              function(stream) {
-                  start_microphone(stream);
-              },
-              function(e) {
-                  alert('Error capturing audio.');
-              }
-            ); // Don't know why i need this bracket
-
-      } else { alert('getUserMedia not supported in this browser.'); }
-
-      // ---
-
-      function show_some_data(given_typed_array, num_row_to_display, label)
-      {
-          var size_buffer = given_typed_array.length;
-          var index = 0;
-          //console.log("__________ " + label);
-          if (label === "time")
-          {
-              for (; index < num_row_to_display && index < size_buffer; index += 1)
-              {
-                  var curr_value_time = (given_typed_array[index] / 128) - 1.0;
-                  //document.getElementById('time').innerHTML = "Time: " + given_typed_array[index];
-                  //console.log(curr_value_time);
-              }
-          } else if (label === "frequency")
-          {
-              for (; index < num_row_to_display && index < size_buffer; index += 1)
-              {
-                  //document.getElementById('frequency').innerHTML = "Frequency: " + given_typed_array[index];
-                  //console.log(given_typed_array[index]);
-              }
-          } else
-          {
-              throw new Error("ERROR - must pass time or frequency");
-          }
+      for (let i = 0, len = mergedBuffer.length; i < len; i++) {
+        buffer[i] = mergedBuffer[i];
       }
 
+      this._bufferSource.buffer = arrayBuffer;
 
-      function process_microphone_buffer(event)
-      {
-          var i, left_output_buffer, right_output_buffer;
-          // not needed for basic feature set
-          left_output_buffer = event.inputBuffer.getChannelData(0); //
-          right_output_buffer = event.inputBuffer.getChannelData(1); //
-          for(var i = 0; i < left_output_buffer.length; i = i + 1000)
-          {
-            document.getElementById('time').innerHTML = "Stereo PCM Data (L): " + left_output_buffer[i];
-            document.getElementById('frequency').innerHTML = "Stereo PCM Data (R): " + right_output_buffer[i];
-          //console.log("Stereo PCM Data (L)", left_output_buffer[i]);
-          //canvasCtx1.font = "30px Arial";
-          //canvasCtx1.fillText(i, 10, 50); //left_output_buffer[i]
-          //console.log("Stereo PCM Data (R)", right_output_buffer[i]);
-          //canvasCtx2.font = "30px Arial";
-          //canvasCtx2.fillText(i, 10, 50); // right_output_buffer[i]
-          }
-      }
+      resolve(this._bufferSource);
+    })
+  }
 
-      function start_microphone(stream)
-      {
-          gain_node = audioContext.createGain();
-          microphone_stream = audioContext.createMediaStreamSource(stream);
-          microphone_stream.connect(gain_node);
-          script_processor_node = audioContext.createScriptProcessor(BUFF_SIZE_RENDERER, 2, 2); //
-          script_processor_node.onaudioprocess = process_microphone_buffer;
-          microphone_stream.connect(script_processor_node);
-          // --- setup FFT
-          script_processor_analysis_node = audioContext.createScriptProcessor(4096, 2, 2); //
-          script_processor_analysis_node.connect(gain_node);
-          analyser_node = audioContext.createAnalyser();
-          analyser_node.smoothingTimeConstant = 0;
-          analyser_node.fftSize = 256;
-          microphone_stream.connect(analyser_node);
-          analyser_node.connect(script_processor_analysis_node);
-          var buffer_length = analyser_node.frequencyBinCount;
-          var array_freq_domain = new Uint8Array(buffer_length);
-          var array_time_domain = new Uint8Array(buffer_length);
-          //console.log("buffer_length " + buffer_length);
-          script_processor_analysis_node.onaudioprocess = function()
-            {
-              // get the average for the first channel
-              analyser_node.getByteFrequencyData(array_freq_domain);
-              analyser_node.getByteTimeDomainData(array_time_domain);
-              // draw the spectrogram
-              if (microphone_stream.playbackState == microphone_stream.PLAYING_STATE) {
-                  show_some_data(array_freq_domain, SIZE_SHOW, "frequency");
-                  show_some_data(array_time_domain, SIZE_SHOW, "time"); // store this to record to aggregate buffer/file
-              }
-          };
-      }
-  //alert("This button will add a new melody line to the score");
-  console.log("record was clicked");
-}
+  _mergeBuffers(bufferArray, bufferSize) {
+    console.log("_mergeBuffers called");
+    // Not merging buffers because there is less than 2 buffers from onaudioprocess event and hence no need to merge
+    if (bufferSize < 2) return;
+    let result = new Float32Array(bufferSize);
 
-function stop()
-{
-  //alert("This button will stop recording audio");
-  console.log("stop was clicked");
-  //record = false;
-}
+    for (let i = 0, len = bufferArray.length, offset = 0; i < len; i++) {
+      result.set(bufferArray[i], offset);
+      offset += bufferArray[i].length;
+    }
+    return result;
+  }
 
-function play()
-{
-  //alert("This button will play the recorded melody");
-  console.log("play was clicked");
-}
+  startRecording() {
+    console.log("startRecording called");
+    if (this._isRecording) return;
 
-function pause()
-{
-  //alert("This button will pause the recorded melody");
-  console.log("pause was clicked");
-}
+    this._clearBuffer();
+    this._isRecording = true;
+  }
+
+  stopRecording() {
+    console.log("stopRecording called");
+    if (!this._isRecording) {
+      console.log("About to clear buffer");
+      this._clearBuffer();
+      return;
+    }
+    console.log("Setting isRecording false");
+    this._isRecording = false;
+  }
+
+  _clearBuffer() {
+    console.log("_clearBuffer called");
+    this._audioBuffer = [];
+    this._audioBufferSize = 0;
+  }
+
+  cleanup() {
+    console.log("cleanup called");
+    this._streamSource.disconnect(this._scriptNode);
+    this._bufferSource.disconnect(this._audioContext.destination);
+    this._audioContext.close();
+  }
+
+  }
+
+  // set up canvas context for visualizer
+  const canvas1 = document.getElementById('canvas1');
+  const canvasCtx1 = canvas1.getContext("2d");
+  const canvas2 = document.getElementById('canvas2');
+  const canvasCtx2 = canvas2.getContext("2d");
+  var mic = new Microphone();
+
+  function addTrack()
+  {
+    console.log("addTrack was clicked");
+  }
+
+  function record()
+  {
+    console.log("record was clicked");
+    mic.startRecording();
+    mic.processAudio();
+  }
+
+  function stop()
+  {
+    console.log("stop was clicked");
+    mic.stopRecording();
+    //mic.cleanup();
+  }
+
+  function play()
+  {
+    console.log("play was clicked");
+    mic.playback();
+  }
+
+  function pause()
+  {
+    console.log("pause was clicked");
+  }
