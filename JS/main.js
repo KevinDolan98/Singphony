@@ -1,51 +1,44 @@
   // Set up Microphone class
-  class Microphone
-  {
+  class Microphone {
     constructor(sampleRate = 44100, bufferLength = 4096) // sampleRate = 44100, bufferLength = 4096
     {
       console.log("constructor called");
       this._sampleRate = sampleRate; // sampleRate is the sampling rate of the microphone
-      // Shorter buffer length results in a more responsive visualization
+      // Shorter buffer length results in a more responsive visualization but less acurate pitch detection
       this._bufferLength = bufferLength; // bufferLength is how long each buffer of audio data is for processing
 
       this._audioContext = new AudioContext(); // set up a new audioContext
-      this._bufferSource = null; //
-      this._streamSource = null; //
-      this._scriptNode = null; //
-
-      this._realtimeBuffer = []; //
-      this._audioBuffer = []; //
-      this._audioBufferSize = 0; //
+      this._streamSource = null; // initialise the streamsource to null
 
       this._isRecording = false; // flag to say if a recording is recording or not
 
-      this._setup(this._bufferLength, this._isRecording); // call setup function passing the length of the audio buffers and the recording flag
+      /* ****************************** Autocorrelation Initialisations start ****************************** */
+      this._analyserAudioNode = this._audioContext.createAnalyser();
+      this._analyserAudioNode.fftSize = 2048;
+
+      this.tracks = null;
+      this.rafID = null;
+      this.buflen = 1024;
+      this.buf = new Float32Array(this.buflen);
+
+      this.noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]; //
+
+      this.MIN_SAMPLES = 0; // will be initialized when AudioContext is created.
+      this.GOOD_ENOUGH_CORRELATION = 0.9; // this is the "bar" for how close a correlation needs to be
+      /* ****************************** Autocorrelation Initialisations end ****************************** */
+
+      this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
     };
 
-    get realtimeBuffer() // Getter function for the realtimeBuffer property [Not called]
-    {
-      console.log("realtimeBuffer called");
-      return this._realtimeBuffer;
-    }
-
-    get isRecording() // Getter function for the isRecording property
-    {
-      console.log("isRecording called");
-      return this._isRecording;
-    }
-
-    _validateSettings()
-    {
+    _validateSettings() {
       console.log("_validateSettings called");
       if (!Number.isInteger(this._sampleRate) || this._sampleRate < 22050 || this._sampleRate > 96000) { // Check if the sample rate is an integer between 22050 and 96000
         throw "Please input an integer samplerate value between 22050 to 96000"; // If it isn't throw this error
+      }
+      this._validateBufferLength(); // call _validateBufferLength to check if the provided buffer length is acceptable
     }
 
-    this._validateBufferLength();
-    }
-
-    _validateBufferLength()
-    {
+    _validateBufferLength() {
       console.log("_validateBufferLength called");
       const acceptedBufferLength = [256, 512, 1024, 2048, 4096, 8192, 16384] // list of acceptable buffer lengths
       if (!acceptedBufferLength.includes(this._bufferLength)) // checks if the given buffer length is within the acceptable range
@@ -54,154 +47,148 @@
       }
     }
 
-    _setup(bufferLength, isRecording)
-    {
-      console.log("_setup called");
-      this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
-
+    _getUserMedia() {
+      console.log("_getUserMedia called");
       // Get microphone access
       if (navigator.mediaDevices) {
-        navigator.mediaDevices.getUserMedia({audio: true}).then((stream) => { // request access to the users microphone and set up a stream
+        navigator.mediaDevices.getUserMedia({
+          audio: true
+        }).then((stream) => { // request access to the users microphone and set up a stream
           this._streamSource = this._audioContext.createMediaStreamSource(stream); // create a stream source
-          this._scriptNode = this._audioContext.createScriptProcessor(bufferLength, 1, 1); // create a script processor node of bufferLength 4096 and only 1 channel for direct audio processing
-          this._bufferSource = this._audioContext.createBufferSource(); // cretes anaudio buffer source node which is can be use to play/access data in an audio buffer
-          this._streamSource.connect(this._scriptNode); // connect the stream to ScriptProcessor (Analysis) node
-          this._bufferSource.connect(this._audioContext.destination); // connect the buffer to the destination (speaker) node
-        }).catch ((e) => {
+          console.log("_streamSource created");
+          this._streamSource.connect(this._analyserAudioNode); // connect the stream source to the analyser node
+          console.log("_analyserAudioNode connected to streamsource");
+        }).catch((e) => {
           throw "Microphone: " + e.name + ". " + e.message; // throw errors with message
         })
+        return 1;
       } else {
         throw "MediaDevices are not supported in this browser, please update your browser"; // throw error if mediaDevices is not supported
+        return -1;
       }
     }
 
-  processAudio() {
-    console.log("processAudio called");
-    // Whenever onaudioprocess event is dispatched it creates a buffer array with the length bufferLength
-    this._scriptNode.onaudioprocess = (audioProcessingEvent) => {
-      if (!this._isRecording) return;
-      //console.log("ONAUDIOPROCESS event occurred!");
-      this._realtimeBuffer = audioProcessingEvent.inputBuffer.getChannelData(0);
+    /*
+     *************************************** Autocorrelation algorithm start ***************************************
+     */
 
-      // Create an array of buffer array until the user finishes recording
-      this._audioBuffer.push(this._realtimeBuffer);
-      this._audioBufferSize += this._bufferLength;
-    }
-  }
+    autoCorrelate(buf, sampleRate) {
+      var SIZE = buf.length; // set SIZE variable equal to buffer length 2048
+      var MAX_SAMPLES = Math.floor(SIZE / 2); // set MAX_SAMPLES = 2048/2 = 1024
+      var best_offset = -1; // initialise best_offset to -1
+      var best_correlation = 0; // initialise best_correlation to 0
+      var rms = 0; // initialise rms to 0 (rms => root-mean-sqyare)
+      var foundGoodCorrelation = false; // initialise foundGoodCorrelation flag to false
+      var correlations = new Array(MAX_SAMPLES); // create an array variable called correlations of size MAX_SAMPLES (1024)
 
-  playback() {
-    console.log("playback called");
-    this._setBuffer().then((bufferSource) => {
-      bufferSource.start();
-    }).catch((e) => {
-      throw "Error playing back audio: " + e.name + ". " + e.message;
-    })
-  }
-
-  _setBuffer() {
-    console.log("_setBuffer called");
-    return new Promise((resolve, reject) => {
-      // New AudioBufferSourceNode needs to be created after each call to start()
-      this._bufferSource = this._audioContext.createBufferSource();
-      this._bufferSource.connect(this._audioContext.destination);
-
-      console.log(this._audioBuffer);
-      console.log(this._audioBufferSize);
-      let mergedBuffer = this._mergeBuffers(this._audioBuffer, this._audioBufferSize);
-      console.log(mergedBuffer);
-      let arrayBuffer = this._audioContext.createBuffer(1, mergedBuffer.length, this._sampleRate);
-      let buffer = arrayBuffer.getChannelData(0);
-
-      for (let i = 0, len = mergedBuffer.length; i < len; i++) {
-        buffer[i] = mergedBuffer[i];
+      for (var i = 0; i < SIZE; i++) {
+        var val = buf[i]; // val is equal to the (i)th value in the array
+        rms += val * val; // rms is the summation of each value squared
       }
+      rms = Math.sqrt(rms / SIZE); // set rms equal to the square root of rms/SIZE (square root of the average)
+      if (rms < 0.01) // not enough signal
+        return -1;
 
-      this._bufferSource.buffer = arrayBuffer;
+      var lastCorrelation = 1; //
+      for (var offset = this.MIN_SAMPLES; offset < MAX_SAMPLES; offset++) { // offset initialised to 0, goes through a for loop from 0 to 1024
+        var correlation = 0; // re-set correlation to 0 at each offset value
 
-      resolve(this._bufferSource);
-    })
-  }
+        for (var i = 0; i < MAX_SAMPLES; i++) { // cycle through from 0 to 1024
+          correlation += Math.abs((buf[i]) - (buf[i + offset])); // step through at each value and subtract the value at the offset from the value in the original buffer and keep adding that to the correlation value
+        } // correlation will be a large enough positive float
 
-  _mergeBuffers(bufferArray, bufferSize) {
-    console.log("_mergeBuffers called");
-    // Not merging buffers because there is less than 2 buffers from onaudioprocess event and hence no need to merge
-    if (bufferSize < 2) return;
-    let result = new Float32Array(bufferSize);
+        correlation = 1 - (correlation / MAX_SAMPLES); // set correlation to 1 - correlation/1024
+        correlations[offset] = correlation; // store it, for the tweaking we need to do below.
+        if ((correlation > this.GOOD_ENOUGH_CORRELATION) && (correlation > lastCorrelation)) { // if the correlation value is higher than 0.9 and the previous correlation value
+          foundGoodCorrelation = true; // set foundGoodCorrelation flag to true
+          if (correlation > best_correlation) {
+            best_correlation = correlation; // update the best_correlation value to the latest correlation value
+            best_offset = offset; // update best_offset to the latest offset value
+          }
+        } else if (foundGoodCorrelation) {
+          // short-circuit - we found a good correlation, then a bad one, so we'd just be seeing copies from here.
+          // Now we need to tweak the offset - by interpolating between the values to the left and right of the
+          // best offset, and shifting it a bit.  This is complex, and HACKY in this code (happy to take PRs!) -
+          // we need to do a curve fit on correlations[] around best_offset in order to better determine precise
+          // (anti-aliased) offset.
 
-    for (let i = 0, len = bufferArray.length, offset = 0; i < len; i++) {
-      result.set(bufferArray[i], offset);
-      offset += bufferArray[i].length;
+          // we know best_offset >=1,
+          // since foundGoodCorrelation cannot go to true until the second pass (offset=1), and
+          // we can't drop into this clause until the following pass (else if).
+          var shift = (correlations[best_offset + 1] - correlations[best_offset - 1]) / correlations[best_offset];
+          return sampleRate / (best_offset + (8 * shift));
+        }
+        lastCorrelation = correlation; // set lastCorrelation to latest correlation
+      }
+      if (best_correlation > 0.01) {
+
+
+      }
+      return -1;
+      //	var best_frequency = sampleRate/best_offset;
     }
-    return result;
-  }
 
-  startRecording() {
-    console.log("startRecording called");
-    if (this._isRecording) return;
-
-    this._clearBuffer();
-    this._isRecording = true;
-  }
-
-  stopRecording() {
-    console.log("stopRecording called");
-    if (!this._isRecording) {
-      console.log("About to clear buffer");
-      this._clearBuffer();
-      return;
+    updatePitch() {
+      //console.log("updatePitchs called");
+      this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
+      var ac = this.autoCorrelate(this.buf, this._audioContext.sampleRate); // call the autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
+      if (ac != -1) {
+        console.log("Fundamental Frequency: " + ac + " Hz");
+      }
     }
-    console.log("Setting isRecording false");
-    this._isRecording = false;
-  }
 
-  _clearBuffer() {
-    console.log("_clearBuffer called");
-    this._audioBuffer = [];
-    this._audioBufferSize = 0;
-  }
+    /*
+     *************************************** Autocorrelation algorithm end ***************************************
+     */
 
-  cleanup() {
-    console.log("cleanup called");
-    this._streamSource.disconnect(this._scriptNode);
-    this._bufferSource.disconnect(this._audioContext.destination);
-    this._audioContext.close();
-  }
+    startRecording() {
+      console.log("startRecording called");
+      if (!this._isRecording) this._getUserMedia();
+      this.updatePitch();
+      if (this._isRecording) return;
+      console.log("Setting isRecording true");
+      this._isRecording = true;
+    }
+
+
+    stopRecording() {
+      console.log("stopRecording called");
+      console.log("Setting isRecording false");
+      this._isRecording = false;
+    }
+
+    cleanup() {
+      console.log("cleanup called");
+      this._audioContext.close();
+    }
 
   }
 
   // set up canvas context for visualizer
-  const canvas1 = document.getElementById('canvas1');
-  const canvasCtx1 = canvas1.getContext("2d");
-  const canvas2 = document.getElementById('canvas2');
-  const canvasCtx2 = canvas2.getContext("2d");
-  var mic = new Microphone();
+  const canvas = document.getElementById('canvas');
+  const canvasCtx = canvas.getContext("2d");
 
-  function addTrack()
-  {
+  var mic = new Microphone(); // Create a mic object
+
+  function addTrack() {
     console.log("addTrack was clicked");
   }
 
-  function record()
-  {
+  function record() {
     console.log("record was clicked");
     mic.startRecording();
-    mic.processAudio();
   }
 
-  function stop()
-  {
+  function stop() {
     console.log("stop was clicked");
     mic.stopRecording();
     //mic.cleanup();
   }
 
-  function play()
-  {
+  function play() {
     console.log("play was clicked");
-    mic.playback();
   }
 
-  function pause()
-  {
+  function pause() {
     console.log("pause was clicked");
   }
