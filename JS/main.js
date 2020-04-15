@@ -12,13 +12,18 @@
 
       this._isRecording = false; // flag to say if a recording is recording or not
 
-      /* ****************************** Autocorrelation Initialisations start ****************************** */
-      this._analyserAudioNode = this._audioContext.createAnalyser();
-      this._analyserAudioNode.fftSize = 2048;
+      // set up canvas context for visualizer
+      this.canvas = document.getElementById('canvas');
+      this.canvasCtx = this.canvas.getContext("2d");
+      this.canvas.width = 800;
+      this.canvas.height = 70;
 
-      this.tracks = null;
-      this.rafID = null;
-      this.buflen = 1024;
+      /* ****************************** Autocorrelation Initialisations start ****************************** */
+      this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node
+      this._analyserAudioNode.fftSize = 2048; // set the fftSize of the analyser to 2048
+
+      this.rafID = null; // this is currently not used (need to fix the this/window problem)
+      this.buflen = 1024; //
       this.buf = new Float32Array(this.buflen);
 
       this.noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]; //
@@ -47,6 +52,7 @@
       }
     }
 
+    /* *************************************** Get access to users microphone start *************************************** */
     _getUserMedia() {
       console.log("_getUserMedia called");
       // Get microphone access
@@ -67,17 +73,16 @@
         return -1;
       }
     }
+    /* *************************************** Get access to users microphone end *************************************** */
 
-    /*
-     *************************************** Autocorrelation algorithm start ***************************************
-     */
 
-    autoCorrelate(buf, sampleRate) {
+    /* *************************************** Autocorrelation algorithm start *************************************** */
+    _autoCorrelate(buf, sampleRate) {
       var SIZE = buf.length; // set SIZE variable equal to buffer length 2048
       var MAX_SAMPLES = Math.floor(SIZE / 2); // set MAX_SAMPLES = 2048/2 = 1024
       var best_offset = -1; // initialise best_offset to -1
       var best_correlation = 0; // initialise best_correlation to 0
-      var rms = 0; // initialise rms to 0 (rms => root-mean-sqyare)
+      var rms = 0; // initialise rms to 0 (rms => root-mean-square)
       var foundGoodCorrelation = false; // initialise foundGoodCorrelation flag to false
       var correlations = new Array(MAX_SAMPLES); // create an array variable called correlations of size MAX_SAMPLES (1024)
 
@@ -128,28 +133,65 @@
       //	var best_frequency = sampleRate/best_offset;
     }
 
-    updatePitch() {
+    _updatePitch() {
       //console.log("updatePitchs called");
       this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
-      var ac = this.autoCorrelate(this.buf, this._audioContext.sampleRate); // call the autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
+      console.log(this.buf);
+      var ac = this._autoCorrelate(this.buf, this._audioContext.sampleRate); // call the _autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
       if (ac != -1) {
         console.log("Fundamental Frequency: " + ac + " Hz");
       }
     }
+    /* *************************************** Autocorrelation algorithm end *************************************** */
 
-    /*
-     *************************************** Autocorrelation algorithm end ***************************************
-     */
+    /* *************************************** Note rendering start *************************************** */
+    _drawStave() {
+      this.canvasCtx.beginPath();
+      this.canvasCtx.moveTo( 5, 10 ); // start at point x=5 y=10
+      this.canvasCtx.lineTo( 795, 10 ); // create line from point x=5 y=10 to x=795 y=10
+      this.canvasCtx.stroke(); // draw path to canvas
+      this.canvasCtx.moveTo( 5, 20 );
+      this.canvasCtx.lineTo( 795, 20 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 5, 30 );
+      this.canvasCtx.lineTo( 795, 30 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 5, 40 );
+      this.canvasCtx.lineTo( 795, 40 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 5, 50 );
+      this.canvasCtx.lineTo( 795, 50 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 795, 10 );
+      this.canvasCtx.lineTo( 795, 50 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 5, 10 );
+      this.canvasCtx.lineTo( 5, 50 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 163, 10 );
+      this.canvasCtx.lineTo( 163, 50 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 321, 10 );
+      this.canvasCtx.lineTo( 321, 50 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 479, 10 );
+      this.canvasCtx.lineTo( 479, 50 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 637, 10 );
+      this.canvasCtx.lineTo( 637, 50 );
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 5, 10 );
+    }
+    /* *************************************** Note rendering end *************************************** */
 
     startRecording() {
       console.log("startRecording called");
       if (!this._isRecording) this._getUserMedia();
-      this.updatePitch();
+      this._updatePitch();
       if (this._isRecording) return;
       console.log("Setting isRecording true");
       this._isRecording = true;
     }
-
 
     stopRecording() {
       console.log("stopRecording called");
@@ -164,14 +206,15 @@
 
   }
 
-  // set up canvas context for visualizer
-  const canvas = document.getElementById('canvas');
-  const canvasCtx = canvas.getContext("2d");
+
+
+/* *************************************** Functions connected to HTML buttons *************************************** */
 
   var mic = new Microphone(); // Create a mic object
 
   function addTrack() {
     console.log("addTrack was clicked");
+    mic._drawStave()
   }
 
   function record() {
@@ -182,7 +225,6 @@
   function stop() {
     console.log("stop was clicked");
     mic.stopRecording();
-    //mic.cleanup();
   }
 
   function play() {

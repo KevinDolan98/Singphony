@@ -110,3 +110,9 @@ body{
 .dropdown:hover .dropdown-content {
  display: block;
 }
+
+/* Show the dropdown menu on hover */
+.canvas {
+ color: white;
+ background: white;
+}
