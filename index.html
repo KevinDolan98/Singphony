@@ -45,16 +45,22 @@
     <div>
       <img class="logo" src="Images/SingphonyLogo.png" alt="Singphony Logo" title="Singphony Logo">
     </div>
-    <div class="div">
-      <canvas id="canvas" class="canvas"></canvas>
+
+    <div class="wrapper">
+      <div class="container">
+        <div class="canvas-container">
+          <canvas id="canvas" class="canvas" width="1024" height="640"></canvas>
+        </div>
+        <div class="div">
+          <button id="addTrack" class="button" onclick="javascript: addTrack()">Add Track</button>
+          <button id="record" class="button" onclick="javascript: record()">Record</button>
+          <button id="stop" class="button" onclick="javascript: stop()">Stop</button>
+          <button id="play" class="button" onclick="javascript: play()">Play</button>
+          <button id="pause" class="button" onclick="javascript: pause()">Pause</button>
+        </div>
+      </div>
     </div>
-    <div class="div">
-      <button id="addTrack" class="button" onclick="javascript: addTrack()">Add Track</button>
-      <button id="record" class="button" onclick="javascript: record()">Record</button>
-      <button id="stop" class="button" onclick="javascript: stop()">Stop</button>
-      <button id="play" class="button" onclick="javascript: play()">Play</button>
-      <button id="pause" class="button" onclick="javascript: pause()">Pause</button>
-    </div>
+
 
     <audio id=recordedAudio></audio>
 

@@ -16,7 +16,9 @@
       this.canvas = document.getElementById('canvas');
       this.canvasCtx = this.canvas.getContext("2d");
       this.canvas.width = 800;
-      this.canvas.height = 70;
+      this.canvas.height = 140;
+      this.canvasOffset = 55;
+      this.numberOfTracks = 0;
 
       /* ****************************** Autocorrelation Initialisations start ****************************** */
       this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node
@@ -147,40 +149,41 @@
     /* *************************************** Note rendering start *************************************** */
     _drawStave() {
       this.canvasCtx.beginPath();
-      this.canvasCtx.moveTo( 5, 10 ); // start at point x=5 y=10
-      this.canvasCtx.lineTo( 795, 10 ); // create line from point x=5 y=10 to x=795 y=10
+      this.canvasCtx.moveTo( 5, 10 + (this.numberOfTracks*this.canvasOffset)); // start at point x=5 y=10
+      this.canvasCtx.lineTo( 795, 10 + (this.numberOfTracks*this.canvasOffset)); // create line from point x=5 y=10 to x=795 y=10
       this.canvasCtx.stroke(); // draw path to canvas
-      this.canvasCtx.moveTo( 5, 20 );
-      this.canvasCtx.lineTo( 795, 20 );
+      this.canvasCtx.moveTo( 5, 20 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 795, 20 + (this.numberOfTracks*this.canvasOffset));
       this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 30 );
-      this.canvasCtx.lineTo( 795, 30 );
+      this.canvasCtx.moveTo( 5, 30 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 795, 30 + (this.numberOfTracks*this.canvasOffset));
       this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 40 );
-      this.canvasCtx.lineTo( 795, 40 );
+      this.canvasCtx.moveTo( 5, 40 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 795, 40 + (this.numberOfTracks*this.canvasOffset));
       this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 50 );
-      this.canvasCtx.lineTo( 795, 50 );
+      this.canvasCtx.moveTo( 5, 50 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 795, 50 + (this.numberOfTracks*this.canvasOffset));
       this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 795, 10 );
-      this.canvasCtx.lineTo( 795, 50 );
+      this.canvasCtx.moveTo( 795, 10 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 795, 50 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 5, 10 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 5, 50 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 163, 10 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 163, 50 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 321, 10 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 321, 50 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 479, 10 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 479, 50 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.stroke();
+      this.canvasCtx.moveTo( 637, 10 + (this.numberOfTracks*this.canvasOffset));
+      this.canvasCtx.lineTo( 637, 50 + (this.numberOfTracks*this.canvasOffset));
       this.canvasCtx.stroke();
       this.canvasCtx.moveTo( 5, 10 );
-      this.canvasCtx.lineTo( 5, 50 );
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 163, 10 );
-      this.canvasCtx.lineTo( 163, 50 );
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 321, 10 );
-      this.canvasCtx.lineTo( 321, 50 );
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 479, 10 );
-      this.canvasCtx.lineTo( 479, 50 );
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 637, 10 );
-      this.canvasCtx.lineTo( 637, 50 );
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 10 );
+      this.numberOfTracks++;
     }
     /* *************************************** Note rendering end *************************************** */
 
