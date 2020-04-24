@@ -33,7 +33,7 @@ body{
 
 .button1{
   border:0;
-  background: none;
+  background: #333;
   display:inline-block;
   margin: 20px auto;
   text-align: center;
@@ -47,6 +47,24 @@ body{
 }
 
 .button1:hover{
+  background: #none;
+}
+
+.button2{
+  border:0;
+  background: red;
+  display:inline-block;
+  margin: 20px auto;
+  text-align: center;
+  border: 2px solid #2ecc71;
+  padding: 14px 40px;
+  outline: none;
+  color: white;
+  transition: 0.25s;
+  border-radius: 24px;
+}
+
+.button2:hover{
   background: #none;
 }
 

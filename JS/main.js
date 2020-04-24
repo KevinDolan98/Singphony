@@ -1,6 +1,7 @@
   // Global variables
   var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
-
+  var updatePitch;
+  var globalStream;
 
   // Set up Microphone class
   class Microphone {
@@ -14,7 +15,8 @@
       this._streamSource = null; // initialise the streamsource to null
       this._isRecording = false; // flag to say if a recording is recording or not
       this.numberOfCanvases = 0;
-      this.options = {audio: true, video: false};
+      this.options = {};
+      this.stream;
       /* ****************************** Autocorrelation Initialisations start ****************************** */
       this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node
       this._analyserAudioNode.fftSize = 2048; // set the fftSize of the analyser to 2048
@@ -54,21 +56,22 @@
     /* *************************************** Get access to users microphone start *************************************** */
     _getUserMedia() {
       console.log("_getUserMedia called");
-      // Get microphone access
-      if (navigator.mediaDevices || navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia(this.options).then((stream) => { // request access to the users microphone and set up a stream
-          this._streamSource = this._audioContext.createMediaStreamSource(stream); // create a stream source
-          console.log("_streamSource created");
-          this._streamSource.connect(this._analyserAudioNode); // connect the stream source to the analyser node
-          console.log("_analyserAudioNode connected to streamsource");
-        }).catch((e) => {
-          throw "Microphone: " + e.name + ". " + e.message; // throw errors with message
-        })
-        return 1;
-      } else {
-        throw "MediaDevices are not supported in this browser, please update your browser"; // throw error if mediaDevices is not supported
-        return -1;
-      }
+        // Get microphone access
+        if (navigator.mediaDevices || navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia(this.options).then((stream) => { // request access to the users microphone and set up a stream
+            globalStream = stream;
+            this._streamSource = this._audioContext.createMediaStreamSource(globalStream); // create a stream source
+            console.log("_streamSource created");
+            this._streamSource.connect(this._analyserAudioNode); // connect the stream source to the analyser node
+            console.log("_analyserAudioNode connected to streamsource");
+          }).catch((e) => {
+            throw "Microphone: " + e.name + ". " + e.message; // throw errors with message
+          })
+          return 1;
+        } else {
+          throw "MediaDevices are not supported in this browser, please update your browser"; // throw error if mediaDevices is not supported
+          return -1;
+        }
     }
     /* *************************************** Get access to users microphone end *************************************** */
 
@@ -134,13 +137,13 @@
       //console.log("updatePitchs called");
       this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
       var ac = this._autoCorrelate(this.buf, this._audioContext.sampleRate); // call the _autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
-      var up = this._updatePitch();
       if (ac != -1) {
         console.log("Fundamental Frequency: " + ac + " Hz");
         this._drawNote(ac)
       }
-      //window.requestAnimationFrame(up);
+      requestAnimationFrame(() => this._updatePitch());
     }
+    //updatePitch = this._updatePitch();
     /* *************************************** Autocorrelation algorithm end *************************************** */
 
     /* *************************************** Note rendering start *************************************** */
@@ -153,35 +156,31 @@
       this._drawLine(5, 50, 100, 50)
       this._drawLine(100, 10, 100, 50)
       this._drawLine(5, 10, 5, 50)
-      this.canvasCtx.moveTo( 5, 10 );
+      this.canvasCtx.moveTo(5, 10);
       this.numberOfTracks++;
     }
 
-    _drawLine(x1, y1, x2, y2)
-    {
-      this.canvasCtx.moveTo( x1, y1 + (this.numberOfTracks*this.canvasOffset)); // start at point x=5 y=10
-      this.canvasCtx.lineTo( x2, y2 + (this.numberOfTracks*this.canvasOffset)); // create line from point x=5 y=10 to x=795 y=10
+    _drawLine(x1, y1, x2, y2) {
+      this.canvasCtx.moveTo(x1, y1 + (this.numberOfTracks * this.canvasOffset)); // start at point x=5 y=10
+      this.canvasCtx.lineTo(x2, y2 + (this.numberOfTracks * this.canvasOffset)); // create line from point x=5 y=10 to x=795 y=10
       this.canvasCtx.stroke(); // draw path to canvas
     }
 
-    _drawNote(note)
-    {
-      if(note >= 640 && note >= 680) // E5
+    _drawNote(note) {
+      if (note >= 640 && note >= 680) // E5
       {
-      this.canvasCtx.fillStyle = 'black';
-      this.canvasCtx.beginPath();
-      this.canvasCtx.arc(10, 15, 5, 0, 360, false);
-      this.canvasCtx.fill();
+        this.canvasCtx.fillStyle = 'black';
+        this.canvasCtx.beginPath();
+        this.canvasCtx.arc(10, 15, 5, 0, 360, false);
+        this.canvasCtx.fill();
       }
     }
     /* *************************************** Note rendering end *************************************** */
 
     /* *************************************** Disable and enable canvas start *************************************** */
 
-    _addCanvas()
-    {
-      if (this.numberOfCanvases == 1)
-      {
+    _addCanvas() {
+      if (this.numberOfCanvases == 1) {
         // set up canvas context for visualizer
         this.canvas = document.getElementById('canvas1');
         this.canvasCtx = this.canvas.getContext("2d");
@@ -189,8 +188,7 @@
         this.numberOfTracks = 0;
         this.canvas.classList.remove("canvas3");
         this.canvas.classList.add("canvas1");
-      }
-      else if (this.numberOfCanvases == 2) {
+      } else if (this.numberOfCanvases == 2) {
         // set up canvas context for visualizer
         this._greyCanvas();
         this.canvas = document.getElementById('canvas2');
@@ -199,8 +197,7 @@
         this.numberOfTracks = 0;
         this.canvas.classList.remove("canvas3");
         this.canvas.classList.add("canvas1");
-      }
-      else if (this.numberOfCanvases == 3) {
+      } else if (this.numberOfCanvases == 3) {
         // set up canvas context for visualizer
         this._greyCanvas();
         this.canvas = document.getElementById('canvas3');
@@ -209,8 +206,7 @@
         this.numberOfTracks = 0;
         this.canvas.classList.remove("canvas3");
         this.canvas.classList.add("canvas1");
-      }
-      else if (this.numberOfCanvases == 4) {
+      } else if (this.numberOfCanvases == 4) {
         // set up canvas context for visualizer
         this._greyCanvas();
         this.canvas = document.getElementById('canvas4');
@@ -222,8 +218,7 @@
       }
     }
 
-    _greyCanvas()
-    {
+    _greyCanvas() {
       this.canvas.classList.remove("canvas1");
       this.canvas.classList.add("canvas2");
     }
@@ -231,25 +226,34 @@
     /* *************************************** Disable and enable canvas end *************************************** */
 
     /* *************************************** Disable and enable button start *************************************** */
-    _disableButton(id)
-    {
+    _disableButton(id) {
       var button = document.getElementById(id);
       button.disabled = true;
-      button.classList.remove("button");
+      button.classList.remove("button", "button2");
       button.classList.add("button1");
     }
 
-    _enableButton(id)
-    {
+    _enableButton(id) {
       var button = document.getElementById(id);
       button.disabled = false;
-      button.classList.remove("button1");
+      button.classList.remove("button1", "button2");
       button.classList.add("button");
+    }
+
+    _redButton(id) {
+      var button = document.getElementById(id);
+      button.disabled = true;
+      button.classList.remove("button", "button1");
+      button.classList.add("button2");
     }
     /* *************************************** Disable and enable button end *************************************** */
 
     startRecording() {
       console.log("startRecording called");
+      this.options = {
+        audio: true,
+        video: false
+      };
       if (!this._isRecording) this._getUserMedia();
       this._updatePitch();
       if (this._isRecording) return;
@@ -272,21 +276,21 @@
 
 
 
-/* *************************************** Functions connected to HTML buttons *************************************** */
+  /* *************************************** Functions connected to HTML buttons *************************************** */
 
   var mic = new Microphone(); // Create a mic object
 
   function addTrack() {
     console.log("addTrack was clicked");
-    if (mic.numberOfCanvases < 4)
-    {
-    mic.numberOfCanvases++
-    mic._addCanvas();
-    mic._drawStave();
-    mic._enableButton("record");
-    mic._disableButton("addTrack");
-    }
-    else {
+    if (mic.numberOfCanvases < 4) {
+      mic.numberOfCanvases++
+      mic._addCanvas();
+      mic._drawStave();
+      mic._enableButton("record");
+      mic._disableButton("addTrack");
+      mic._disableButton("play");
+      mic._disableButton("pause");
+    } else {
       alert("Can't add more than 4 parallel tracks!")
     }
   }
@@ -295,7 +299,7 @@
     console.log("record was clicked");
     mic._enableButton("stop");
     mic._disableButton("addTrack");
-    mic._disableButton("record");
+    mic._redButton("record");
     mic.startRecording();
   }
 
@@ -303,13 +307,20 @@
     console.log("stop was clicked");
     mic.stopRecording();
     mic._enableButton("play");
+    mic._enableButton("addTrack");
+    mic._disableButton("record");
+    mic._disableButton("stop");
+    globalStream.getAudioTracks()[0].stop();
   }
 
   function play() {
     console.log("play was clicked");
     mic._enableButton("pause");
+    mic._disableButton("play");
   }
 
   function pause() {
     console.log("pause was clicked");
+    mic._disableButton("pause");
+    mic._enableButton("play");
   }
