@@ -31,6 +31,25 @@ body{
   background: #2ecc71;
 }
 
+.button1{
+  border:0;
+  background: none;
+  display:inline-block;
+  margin: 20px auto;
+  text-align: center;
+  border: 2px solid #2ecc71;
+  padding: 14px 40px;
+  outline: none;
+  color: white;
+  transition: 0.25s;
+  border-radius: 24px;
+  opacity: 0.3;
+}
+
+.button1:hover{
+  background: #none;
+}
+
 .logo {
   display: block;
   margin-left: auto;
@@ -124,13 +143,26 @@ body{
 }
 .canvas-container {
    /*position: relative;*/
-   max-width: 1024px;
-   min-width: 320px;
+   max-width: 1010px;
+   min-width: 410px;
    margin: 0 auto;
 }
 
-.canvas {
+.canvas1 {
   width: 100%;
   height: auto;
   background-color: white;
+}
+
+.canvas2 {
+  width: 100%;
+  height: auto;
+  background-color: white;
+  opacity: 0.1;
+}
+
+.canvas3 {
+  width: 0px;
+  height: 0px;
+  opacity: 0.0;
 }

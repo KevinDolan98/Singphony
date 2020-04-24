@@ -1,3 +1,7 @@
+  // Global variables
+  var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+
+
   // Set up Microphone class
   class Microphone {
     constructor(sampleRate = 44100, bufferLength = 4096) // sampleRate = 44100, bufferLength = 4096
@@ -6,24 +10,14 @@
       this._sampleRate = sampleRate; // sampleRate is the sampling rate of the microphone
       // Shorter buffer length results in a more responsive visualization but less acurate pitch detection
       this._bufferLength = bufferLength; // bufferLength is how long each buffer of audio data is for processing
-
       this._audioContext = new AudioContext(); // set up a new audioContext
       this._streamSource = null; // initialise the streamsource to null
-
       this._isRecording = false; // flag to say if a recording is recording or not
-
-      // set up canvas context for visualizer
-      this.canvas = document.getElementById('canvas');
-      this.canvasCtx = this.canvas.getContext("2d");
-      this.canvas.width = 800;
-      this.canvas.height = 140;
-      this.canvasOffset = 55;
-      this.numberOfTracks = 0;
-
+      this.numberOfCanvases = 0;
+      this.options = {audio: true, video: false};
       /* ****************************** Autocorrelation Initialisations start ****************************** */
       this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node
       this._analyserAudioNode.fftSize = 2048; // set the fftSize of the analyser to 2048
-
       this.rafID = null; // this is currently not used (need to fix the this/window problem)
       this.buflen = 1024; //
       this.buf = new Float32Array(this.buflen);
@@ -32,8 +26,11 @@
 
       this.MIN_SAMPLES = 0; // will be initialized when AudioContext is created.
       this.GOOD_ENOUGH_CORRELATION = 0.9; // this is the "bar" for how close a correlation needs to be
+      this._disableButton('record');
+      this._disableButton('stop');
+      this._disableButton('play');
+      this._disableButton('pause');
       /* ****************************** Autocorrelation Initialisations end ****************************** */
-
       this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
     };
 
@@ -58,10 +55,8 @@
     _getUserMedia() {
       console.log("_getUserMedia called");
       // Get microphone access
-      if (navigator.mediaDevices) {
-        navigator.mediaDevices.getUserMedia({
-          audio: true
-        }).then((stream) => { // request access to the users microphone and set up a stream
+      if (navigator.mediaDevices || navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia(this.options).then((stream) => { // request access to the users microphone and set up a stream
           this._streamSource = this._audioContext.createMediaStreamSource(stream); // create a stream source
           console.log("_streamSource created");
           this._streamSource.connect(this._analyserAudioNode); // connect the stream source to the analyser node
@@ -138,54 +133,120 @@
     _updatePitch() {
       //console.log("updatePitchs called");
       this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
-      console.log(this.buf);
       var ac = this._autoCorrelate(this.buf, this._audioContext.sampleRate); // call the _autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
+      var up = this._updatePitch();
       if (ac != -1) {
         console.log("Fundamental Frequency: " + ac + " Hz");
+        this._drawNote(ac)
       }
+      //window.requestAnimationFrame(up);
     }
     /* *************************************** Autocorrelation algorithm end *************************************** */
 
     /* *************************************** Note rendering start *************************************** */
     _drawStave() {
       this.canvasCtx.beginPath();
-      this.canvasCtx.moveTo( 5, 10 + (this.numberOfTracks*this.canvasOffset)); // start at point x=5 y=10
-      this.canvasCtx.lineTo( 795, 10 + (this.numberOfTracks*this.canvasOffset)); // create line from point x=5 y=10 to x=795 y=10
-      this.canvasCtx.stroke(); // draw path to canvas
-      this.canvasCtx.moveTo( 5, 20 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 795, 20 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 30 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 795, 30 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 40 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 795, 40 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 795, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 795, 10 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 795, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 5, 10 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 5, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 163, 10 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 163, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 321, 10 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 321, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 479, 10 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 479, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
-      this.canvasCtx.moveTo( 637, 10 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.lineTo( 637, 50 + (this.numberOfTracks*this.canvasOffset));
-      this.canvasCtx.stroke();
+      this._drawLine(5, 10, 100, 10)
+      this._drawLine(5, 20, 100, 20)
+      this._drawLine(5, 30, 100, 30)
+      this._drawLine(5, 40, 100, 40)
+      this._drawLine(5, 50, 100, 50)
+      this._drawLine(100, 10, 100, 50)
+      this._drawLine(5, 10, 5, 50)
       this.canvasCtx.moveTo( 5, 10 );
       this.numberOfTracks++;
     }
+
+    _drawLine(x1, y1, x2, y2)
+    {
+      this.canvasCtx.moveTo( x1, y1 + (this.numberOfTracks*this.canvasOffset)); // start at point x=5 y=10
+      this.canvasCtx.lineTo( x2, y2 + (this.numberOfTracks*this.canvasOffset)); // create line from point x=5 y=10 to x=795 y=10
+      this.canvasCtx.stroke(); // draw path to canvas
+    }
+
+    _drawNote(note)
+    {
+      if(note >= 640 && note >= 680) // E5
+      {
+      this.canvasCtx.fillStyle = 'black';
+      this.canvasCtx.beginPath();
+      this.canvasCtx.arc(10, 15, 5, 0, 360, false);
+      this.canvasCtx.fill();
+      }
+    }
     /* *************************************** Note rendering end *************************************** */
+
+    /* *************************************** Disable and enable canvas start *************************************** */
+
+    _addCanvas()
+    {
+      if (this.numberOfCanvases == 1)
+      {
+        // set up canvas context for visualizer
+        this.canvas = document.getElementById('canvas1');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasOffset = 55;
+        this.numberOfTracks = 0;
+        this.canvas.classList.remove("canvas3");
+        this.canvas.classList.add("canvas1");
+      }
+      else if (this.numberOfCanvases == 2) {
+        // set up canvas context for visualizer
+        this._greyCanvas();
+        this.canvas = document.getElementById('canvas2');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasOffset = 55;
+        this.numberOfTracks = 0;
+        this.canvas.classList.remove("canvas3");
+        this.canvas.classList.add("canvas1");
+      }
+      else if (this.numberOfCanvases == 3) {
+        // set up canvas context for visualizer
+        this._greyCanvas();
+        this.canvas = document.getElementById('canvas3');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasOffset = 55;
+        this.numberOfTracks = 0;
+        this.canvas.classList.remove("canvas3");
+        this.canvas.classList.add("canvas1");
+      }
+      else if (this.numberOfCanvases == 4) {
+        // set up canvas context for visualizer
+        this._greyCanvas();
+        this.canvas = document.getElementById('canvas4');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasOffset = 55;
+        this.numberOfTracks = 0;
+        this.canvas.classList.remove("canvas3");
+        this.canvas.classList.add("canvas1");
+      }
+    }
+
+    _greyCanvas()
+    {
+      this.canvas.classList.remove("canvas1");
+      this.canvas.classList.add("canvas2");
+    }
+
+    /* *************************************** Disable and enable canvas end *************************************** */
+
+    /* *************************************** Disable and enable button start *************************************** */
+    _disableButton(id)
+    {
+      var button = document.getElementById(id);
+      button.disabled = true;
+      button.classList.remove("button");
+      button.classList.add("button1");
+    }
+
+    _enableButton(id)
+    {
+      var button = document.getElementById(id);
+      button.disabled = false;
+      button.classList.remove("button1");
+      button.classList.add("button");
+    }
+    /* *************************************** Disable and enable button end *************************************** */
 
     startRecording() {
       console.log("startRecording called");
@@ -217,21 +278,36 @@
 
   function addTrack() {
     console.log("addTrack was clicked");
-    mic._drawStave()
+    if (mic.numberOfCanvases < 4)
+    {
+    mic.numberOfCanvases++
+    mic._addCanvas();
+    mic._drawStave();
+    mic._enableButton("record");
+    mic._disableButton("addTrack");
+    }
+    else {
+      alert("Can't add more than 4 parallel tracks!")
+    }
   }
 
   function record() {
     console.log("record was clicked");
+    mic._enableButton("stop");
+    mic._disableButton("addTrack");
+    mic._disableButton("record");
     mic.startRecording();
   }
 
   function stop() {
     console.log("stop was clicked");
     mic.stopRecording();
+    mic._enableButton("play");
   }
 
   function play() {
     console.log("play was clicked");
+    mic._enableButton("pause");
   }
 
   function pause() {
