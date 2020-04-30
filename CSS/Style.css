@@ -68,6 +68,11 @@ body{
   background: #none;
 }
 
+.button3{
+  width: 0px;
+  height: 0px;
+}
+
 .logo {
   display: block;
   margin-left: auto;
@@ -159,11 +164,28 @@ body{
    display: table-cell;
    vertical-align: middle;
 }
-.canvas-container {
-   /*position: relative;*/
+.canvas-container1 {
+   position: relative;
+   text-align: center;
+   margin: 0 auto;
    max-width: 1010px;
    min-width: 410px;
+}
+.canvas-container2 {
+   position: relative;
+   text-align: center;
    margin: 0 auto;
+   max-width: 1010px;
+   min-width: 410px;
+   opacity: 0.1;
+}
+.canvas-container3 {
+   position: relative;
+   text-align: center;
+   margin: 0 auto;
+   width: 0px;
+   height: 0px;
+   opacity: 0.0;
 }
 
 .canvas1 {
