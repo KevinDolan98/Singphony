@@ -17,7 +17,7 @@
       this.numberOfCanvases = 0;
       this.options = {};
       this.stream;
-      this.noteOffset = 5;
+      this.noteOffset = 10;
       this.noteNumber = 0;
       /* ****************************** Autocorrelation Initialisations start ****************************** */
       this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node
@@ -83,22 +83,12 @@
         },
       ]; //
 
-      this.f = 1500;
-      for (var x = 0; x < this.noteStrings.length; x++) {
-      if (this.f >= this.noteStrings[x]["minfrequency"] && this.f <= this.noteStrings[x]["maxfrequency"]) // E5
-      {
-        console.log(this.noteStrings[x].note)
-      }
-    }
-
       this.MIN_SAMPLES = 0; // will be initialized when AudioContext is created.
       this.GOOD_ENOUGH_CORRELATION = 0.9; // this is the "bar" for how close a correlation needs to be
       this._disableButton('record');
       this._disableButton('stop');
       this._disableButton('play');
       this._disableButton('pause');
-      this.oscillator = this._audioContext.createOscillator();
-      this.gainNode = this._audioContext.createGain();
       /* ****************************** Autocorrelation Initialisations end ****************************** */
       this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
     };
@@ -205,7 +195,7 @@
       this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
       var ac = this._autoCorrelate(this.buf, this._audioContext.sampleRate); // call the _autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
       if (ac != -1 && ac >= 312 && ac <= 742) {
-        console.log("Fundamental Frequency: " + ac + " Hz");
+        //console.log("Fundamental Frequency: " + ac + " Hz");
         this.noteArray.push(ac);
         this._drawNote(this.noteArray);
       }
@@ -214,16 +204,21 @@
     /* *************************************** Autocorrelation algorithm end *************************************** */
 
     /* *************************************** Note rendering start *************************************** */
-    _drawStave() {
+    _drawStave()
+    {
+    var barLength = 95;
+      for(var i = 0; i < 10; i++)
+      {
       this.canvasCtx.beginPath();
-      this._drawLine(5, 10, 100, 10)
-      this._drawLine(5, 20, 100, 20)
-      this._drawLine(5, 30, 100, 30)
-      this._drawLine(5, 40, 100, 40)
-      this._drawLine(5, 50, 100, 50)
-      this._drawLine(100, 10, 100, 50)
-      this._drawLine(5, 10, 5, 50)
+      this._drawLine(5 + (i*barLength), 10, 100 + (i*barLength), 10)
+      this._drawLine(5 + (i*barLength), 20, 100 + (i*barLength), 20)
+      this._drawLine(5 + (i*barLength), 30, 100 + (i*barLength), 30)
+      this._drawLine(5 + (i*barLength), 40, 100 + (i*barLength), 40)
+      this._drawLine(5 + (i*barLength), 50, 100 + (i*barLength), 50)
+      this._drawLine(100 + (i*barLength), 10, 100 + (i*barLength), 50)
+      this._drawLine(5 + (i*barLength), 10, 5 + (i*barLength), 50)
       this.canvasCtx.moveTo(5, 10);
+      }
       this.numberOfTracks++;
     }
 
@@ -246,7 +241,7 @@
             this.canvasCtx.fill();
             //this.noteOffset++;
             this.noteNumber++;
-            console.log(15 + (this.noteOffset*this.noteNumber))
+            //console.log(15 + (this.noteOffset*this.noteNumber))
           }
         }
       //}
@@ -332,17 +327,17 @@
       this.canvasContainer.classList.add("canvas-container1");
     } else if (this.numberOfCanvases == 2) {
       // set up canvas context for visualizer
-      this.canvasContainer = document.getElementById('canvasContainer1');
+      this.canvasContainer = document.getElementById('canvasContainer2');
       this.canvasContainer.classList.remove("canvas-container2");
       this.canvasContainer.classList.add("canvas-container1");
     } else if (this.numberOfCanvases == 3) {
       // set up canvas context for visualizer
-      this.canvasContainer = document.getElementById('canvasContainer1');
+      this.canvasContainer = document.getElementById('canvasContainer3');
       this.canvasContainer.classList.remove("canvas-container2");
       this.canvasContainer.classList.add("canvas-container1");
     } else if (this.numberOfCanvases == 4) {
       // set up canvas context for visualizer
-      this.canvasContainer = document.getElementById('canvasContainer1');
+      this.canvasContainer = document.getElementById('canvasContainer4');
       this.canvasContainer.classList.remove("canvas-container2");
       this.canvasContainer.classList.add("canvas-container1");
     }
@@ -375,13 +370,41 @@
 
   /* *************************************** Music playing start *************************************** */
 
-  _playMusic(freq) {
-    this.oscillator.type = 'sine';
-    this.oscillator.frequency.value = 440;
-    this.oscillator.connect(this.gainNode);
-    this.gainNode.connect(this._audioContext.destination);
-    this.oscillator.start();
+  _playMusic(array) {
+    var e = document.getElementById("instruments1");
+    var strUser = e.options[e.selectedIndex].value;
+    console.log(strUser);
+    for (var i = 0; i < array.length; i++)
+    {
+    console.log(array[i]);
+    var oscillator = this._audioContext.createOscillator();
+    oscillator.type = strUser;
+    oscillator.frequency.value = array[1];
+    oscillator.start(0);
+    oscillator.stop(0 + 0.5);
+    oscillator.connect(this._audioContext.destination);
+    //oscillator.start(0);
+    //oscillator.stop(0.5);
+    //oscillator.disconnect();
+    }
   }
+
+  /*
+  function playNotes () {
+      notes.reduce((offset, [ frequency, duration ]) => {
+          const oscillatorNode = context.createOscillator();
+
+          oscillatorNode.frequency.value = frequency;
+
+          oscillatorNode.start(offset);
+          oscillatorNode.stop(offset + duration);
+
+          oscillatorNode.connect(context.destination);
+
+          return offset + duration;
+      }, context.currentTime);
+  }
+  */
 
   _stopMusic(freq) {
     this.oscillator.stop();
@@ -461,7 +484,27 @@
     console.log("play was clicked");
     mic._enableButton("pause");
     mic._disableButton("play");
-    //mic._playMusic(440);
+    //mic._playMusic(mic.noteArray);
+    const NOTES = [ [ 783.99, 0.5 ], [ 0, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.5 ], [ 0, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.25 ], [ 987.77, 0.25 ], [ 1174.7, 0.25] ];
+    function playNotes (context, notes) {
+        notes.reduce((offset, [ frequency, duration ]) => {
+            const oscillatorNode = context.createOscillator();
+            console.log("Offset: ", offset);
+            console.log("Frequency: ", frequency);
+            console.log("Duration: ", duration);
+            oscillatorNode.frequency.value = frequency;
+
+            oscillatorNode.start(offset);
+            oscillatorNode.stop(offset + duration);
+
+            oscillatorNode.connect(context.destination);
+
+            return offset + duration;
+        }, context.currentTime);
+    }
+    const audioContext = new AudioContext();
+
+playNotes(audioContext, NOTES);
   }
 
   function pause() {
