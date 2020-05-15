@@ -173,7 +173,7 @@
       for (var offset = this.MIN_SAMPLES; offset < MAX_SAMPLES; offset++) { // offset initialised to 0, goes through a for loop from 0 to 512
         var correlation = 0; // re-set correlation to 0 at each offset value
 
-        for (var i = 0; i < MAX_SAMPLES; i++) { // cycle through from 0 to 512
+        for (var i = 53; i < 158; i++) { // cycle through from 0 to 512  MAX_SAMPLES!!!!!!!!!!
           correlation += Math.abs((buf[i]) - (buf[i + offset])); // step through at each value and subtract the value at the offset from the value in the original buffer and keep adding that to the correlation value
         } // correlation will be a large enough positive float
 
@@ -488,13 +488,10 @@
       this.t = setInterval(this._updatePitch.bind(this), 500);
       //this._updatePitch();
       if (this._isRecording) return;
-      //console.log("Setting isRecording true");
       //this._isRecording = true;
     }
 
     stopRecording() {
-      //console.log("stopRecording called");
-      //console.log("Setting isRecording false");
       this._isRecording = false;
     }
 
