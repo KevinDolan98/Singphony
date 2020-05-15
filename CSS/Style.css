@@ -168,14 +168,15 @@ body{
    position: relative;
    text-align: center;
    margin: 0 auto;
-   max-width: 1010px;
+   max-width: 1210px;
    min-width: 410px;
+   overflow: scroll;
 }
 .canvas-container2 {
    position: relative;
    text-align: center;
    margin: 0 auto;
-   max-width: 1010px;
+   max-width: 1210px;
    min-width: 410px;
    opacity: 0.1;
 }
@@ -205,4 +206,30 @@ body{
   width: 0px;
   height: 0px;
   opacity: 0.0;
+}
+
+.title {
+  border:0;
+  background: none;
+  margin: 20px auto;
+  text-align: center;
+  border: 2px solid #2ecc71;
+  padding: 14px 40px;
+  outline: none;
+  color: white;
+  transition: 0.25s;
+  border-radius: 24px;
+}
+
+.text {
+  border:0;
+  background: none;
+  margin: 20px auto;
+  text-align: center;
+  border: 2px solid #2ecc71;
+  padding: 14px 40px;
+  outline: none;
+  color: white;
+  transition: 0.25s;
+  border-radius: 24px;
 }
