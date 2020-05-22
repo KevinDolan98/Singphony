@@ -5,7 +5,7 @@
 
   // Set up Microphone class
   class Microphone {
-    constructor(sampleRate = 44100, bufferLength = 22050) // sampleRate = 44100, bufferLength = 22500
+    constructor(sampleRate = 44100, bufferLength = 4096) // sampleRate = 44100, bufferLength = 22500
     {
       this._sampleRate = sampleRate; // sampleRate is the sampling rate of the microphone
       this._bufferLength = bufferLength; // bufferLength is how long each buffer of audio data is for processing
@@ -23,7 +23,7 @@
       this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node
       this._analyserAudioNode.fftSize = 32768;
       this.rafID = null; // this is currently not used (need to fix the this/window problem)
-      this.buflen = 22050; //
+      this.buflen = 4096; //
       this.buf = new Float32Array(this.buflen);
       this.noteArray = new Array();
       this.xcoordinate1 = 30;
@@ -42,66 +42,77 @@
           "note": "D4",
           "minfrequency": 278,
           "maxfrequency": 311.99,
+          "frequency":293.66,
           "ycoordinate": 55
         },
         {
           "note": "E4",
           "minfrequency": 312,
           "maxfrequency": 340.99,
+          "frequency":329.63,
           "ycoordinate": 50
         },
         {
           "note": "F4",
           "minfrequency": 341,
           "maxfrequency": 371.99,
+          "frequency":349.23,
           "ycoordinate": 45
         },
         {
           "note": "G4",
           "minfrequency": 372,
           "maxfrequency": 416.99,
+          "frequency":392,
           "ycoordinate": 40
         },
         {
           "note": "A4",
           "minfrequency": 417,
           "maxfrequency": 467.99,
+          "frequency":440,
           "ycoordinate": 35
         },
         {
           "note": "B4",
           "minfrequency": 468,
           "maxfrequency": 509.99,
+          "frequency":493.88,
           "ycoordinate": 30
         },
         {
           "note": "C5",
           "minfrequency": 510,
           "maxfrequency": 556.99,
+          "frequency":523.25,
           "ycoordinate": 25
         },
         {
           "note": "D5",
           "minfrequency": 557,
           "maxfrequency": 624.99,
+          "frequency":587.33,
           "ycoordinate": 20
         },
         {
           "note": "E5",
           "minfrequency": 625,
           "maxfrequency": 679.99,
+          "frequency":659.25,
           "ycoordinate": 15
         },
         {
           "note": "F5",
           "minfrequency": 680,
           "maxfrequency": 742.99,
+          "frequency":698.46,
           "ycoordinate": 10
         },
         {
           "note": "G5",
           "minfrequency": 743,
           "maxfrequency": 832.99,
+          "frequency":783.99,
           "ycoordinate": 5
         },
       ]; //
@@ -110,8 +121,18 @@
       this.GOOD_ENOUGH_CORRELATION = 0.9; // this is the "bar" for how close a correlation needs to be
       this._disableButton('record');
       this._disableButton('stop');
-      this._disableButton('play');
-      this._disableButton('pause');
+      this._disableButton('playAll');
+      this.PD4 = new Audio('Sounds/D4.mp3');
+      this.PE4 = new Audio('Sounds/E4.mp3');
+      this.PF4 = new Audio('Sounds/F4.mp3');
+      this.PG4 = new Audio('Sounds/G4.mp3');
+      this.PA4 = new Audio('Sounds/A4.mp3');
+      this.PB4 = new Audio('Sounds/B4.mp3');
+      this.PC5 = new Audio('Sounds/C5.mp3');
+      this.PD5 = new Audio('Sounds/D5.mp3');
+      this.PE5 = new Audio('Sounds/E5.mp3');
+      this.PF5 = new Audio('Sounds/F5.mp3');
+      this.PG5 = new Audio('Sounds/G5.mp3');
       /* ****************************** Autocorrelation Initialisations end ****************************** */
       this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
     };
@@ -153,13 +174,13 @@
 
     /* *************************************** Autocorrelation algorithm start *************************************** */
     _autoCorrelate(buf, sampleRate) {
-      var SIZE = buf.length; // set SIZE variable equal to buffer length 22050 => half a second
-      var MAX_SAMPLES = Math.floor(SIZE / 2); // set MAX_SAMPLES = 22050/2 = 11025
+      var SIZE = buf.length; // set SIZE variable equal to buffer length 4096 => half a second
+      var MAX_SAMPLES = Math.floor(SIZE / 2); // set MAX_SAMPLES = 4096/2 = 2048
       var best_offset = -1; // initialise best_offset to -1
       var best_correlation = 0; // initialise best_correlation to 0
       var rms = 0; // initialise rms to 0 (rms => root-mean-square)
       var foundGoodCorrelation = false; // initialise foundGoodCorrelation flag to false
-      var correlations = new Array(MAX_SAMPLES); // create an array variable called correlations of size MAX_SAMPLES (11025)
+      var correlations = new Array(MAX_SAMPLES); // create an array variable called correlations of size MAX_SAMPLES (2048)
 
       for (var i = 0; i < SIZE; i++) {
         var val = buf[i]; // val is equal to the (i)th value in the array
@@ -170,10 +191,10 @@
         return -1;
 
       var lastCorrelation = 1; // initialise lastCorrelation to 1 so that the first check won't be the best correlation
-      for (var offset = this.MIN_SAMPLES; offset < MAX_SAMPLES; offset++) { // offset initialised to 0, goes through a for loop from 0 to 512
+      for (var offset = 52; offset < 160; offset++) { // offset initialised to 0, goes through a for loop from 0 to 512 [for (var offset = this.MIN_SAMPLES; offset < MAX_SAMPLES; offset++)]
         var correlation = 0; // re-set correlation to 0 at each offset value
 
-        for (var i = 53; i < 158; i++) { // cycle through from 0 to 512  MAX_SAMPLES!!!!!!!!!!
+        for (var i = 0; i < MAX_SAMPLES; i++) { // cycle through from 0 to 512  MAX_SAMPLES!!!!!!!!!!
           correlation += Math.abs((buf[i]) - (buf[i + offset])); // step through at each value and subtract the value at the offset from the value in the original buffer and keep adding that to the correlation value
         } // correlation will be a large enough positive float
 
@@ -202,7 +223,6 @@
       }
       if (best_correlation > 0.01) {
 
-
       }
       return -1;
       //	var best_frequency = sampleRate/best_offset;
@@ -211,19 +231,11 @@
     _updatePitch() {
       this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
       var ac = this._autoCorrelate(this.buf, this._audioContext.sampleRate); // call the _autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
-
-      if (ac != -1 && ac >= 278 && ac <= 833) {
+      console.log("Frequency: ", ac);
+      if (ac >= 278 && ac <= 833) {
+        console.log("LOOP ENTERED");
         this.noteArray.push(ac);
         this._drawNote(this.noteArray);
-        if (this.currentCanvas == 1) {
-          this.NOTES1.push([ac, 0.5]);
-        } else if (this.currentCanvas == 2) {
-          this.NOTES2.push([ac, 0.5]);
-        } else if (this.currentCanvas == 3) {
-          this.NOTES3.push([ac, 0.5]);
-        } else if (this.currentCanvas == 4) {
-          this.NOTES4.push([ac, 0.5]);
-        }
       } else if (ac == -1) {
         this._drawRest();
         if (this.currentCanvas == 1) {
@@ -279,9 +291,11 @@
     }
 
     _drawNote(array) {
+      console.log("Draw Note called!!!");
       for (var x = 0; x < this.noteStrings.length; x++) {
         if (array[this.arrayNumber] >= this.noteStrings[x]["minfrequency"] && array[this.arrayNumber] <= this.noteStrings[x]["maxfrequency"]) // E5
         {
+          console.log("Draw Note LOOP Entered!!!");
           this.canvasCtx.fillStyle = 'black';
           this.canvasCtx.beginPath();
           this.canvasCtx.arc(35 + (this.noteOffset * this.noteNumber), (this.noteStrings[x].ycoordinate) + (this.lineCount * this.Offset), 5, 0, 360, false);
@@ -289,6 +303,16 @@
           this.xcoordinate1 = 35 + (this.noteOffset * this.noteNumber);
           this.noteNumber++;
           this.arrayNumber++;
+          console.log("X: ", this.xcoordinate1);
+          if (this.currentCanvas == 1) {
+            this.NOTES1.push([this.noteStrings[x].frequency, 0.5]);
+          } else if (this.currentCanvas == 2) {
+            this.NOTES2.push([this.noteStrings[x].frequency, 0.5]);
+          } else if (this.currentCanvas == 3) {
+            this.NOTES3.push([this.noteStrings[x].frequency, 0.5]);
+          } else if (this.currentCanvas == 4) {
+            this.NOTES4.push([this.noteStrings[x].frequency, 0.5]);
+          }
           //console.log("Line number: ", this.lineCount);
           //console.log("xcoordinate1: ", this.xcoordinate1);
           if (this.xcoordinate1 == 985) {
@@ -315,6 +339,7 @@
       this.canvasCtx.moveTo(x1, y);
       this.canvasCtx.lineTo(x2, y);
       this.canvasCtx.stroke();
+      this.canvasCtx.moveTo(x1, y);
       this.noteNumber++;
       if (x1 == 985) {
         this.lineCount++;
@@ -339,13 +364,10 @@
       if (this.numberOfCanvases == 1) {
         // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer1');
-        this.list = document.getElementById('instruments1');
         this.canvas = document.getElementById('canvas1');
         this.canvasCtx = this.canvas.getContext("2d");
         this.canvasOffset = 55;
         this.numberOfTracks = 0;
-        this.list.classList.remove("button3");
-        this.list.classList.add("button");
         this.canvas.classList.remove("canvas3");
         this.canvas.classList.add("canvas1");
         this.canvasContainer.classList.remove("canvas-container3");
@@ -354,13 +376,10 @@
         // set up canvas context for visualizer
         this._greyCanvas();
         this.canvasContainer = document.getElementById('canvasContainer2');
-        this.list = document.getElementById('instruments2');
         this.canvas = document.getElementById('canvas2');
         this.canvasCtx = this.canvas.getContext("2d");
         this.canvasOffset = 55;
         this.numberOfTracks = 0;
-        this.list.classList.remove("button3");
-        this.list.classList.add("button");
         this.canvas.classList.remove("canvas3");
         this.canvas.classList.add("canvas1");
         this.canvasContainer.classList.remove("canvas-container3");
@@ -369,13 +388,10 @@
         // set up canvas context for visualizer
         this._greyCanvas();
         this.canvasContainer = document.getElementById('canvasContainer3');
-        this.list = document.getElementById('instruments3');
         this.canvas = document.getElementById('canvas3');
         this.canvasCtx = this.canvas.getContext("2d");
         this.canvasOffset = 55;
         this.numberOfTracks = 0;
-        this.list.classList.remove("button3");
-        this.list.classList.add("button");
         this.canvas.classList.remove("canvas3");
         this.canvas.classList.add("canvas1");
         this.canvasContainer.classList.remove("canvas-container3");
@@ -384,17 +400,38 @@
         // set up canvas context for visualizer
         this._greyCanvas();
         this.canvasContainer = document.getElementById('canvasContainer4');
-        this.list = document.getElementById('instruments4');
         this.canvas = document.getElementById('canvas4');
         this.canvasCtx = this.canvas.getContext("2d");
         this.canvasOffset = 55;
         this.numberOfTracks = 0;
-        this.list.classList.remove("button3");
-        this.list.classList.add("button");
         this.canvas.classList.remove("canvas3");
         this.canvas.classList.add("canvas1");
         this.canvasContainer.classList.remove("canvas-container3");
         this.canvasContainer.classList.add("canvas-container1");
+      }
+    }
+
+    _clearCanvas(canvasNumber) {
+      if (canvasNumber == 1) {
+        this.canvas = document.getElementById('canvas1');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.NOTES1 = [];
+      } else if (canvasNumber == 2) {
+        this.canvas = document.getElementById('canvas2');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.NOTES2 = [];
+      } else if (canvasNumber == 3) {
+        this.canvas = document.getElementById('canvas3');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.NOTES3 = [];
+      } else if (canvasNumber == 4) {
+        this.canvas = document.getElementById('canvas4');
+        this.canvasCtx = this.canvas.getContext("2d");
+        this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.NOTES4 = [];
       }
     }
 
@@ -433,14 +470,14 @@
     _disableButton(id) {
       var button = document.getElementById(id);
       button.disabled = true;
-      button.classList.remove("button", "button2");
+      button.classList.remove("button", "button2", "button3");
       button.classList.add("button1");
     }
 
     _enableButton(id) {
       var button = document.getElementById(id);
       button.disabled = false;
-      button.classList.remove("button1", "button2");
+      button.classList.remove("button1", "button2", "button3");
       button.classList.add("button");
     }
 
@@ -454,25 +491,24 @@
 
     /* *************************************** Music playing start *************************************** */
 
-    _playMusic(array) {
-      var e = document.getElementById("instruments1");
-      var strUser = e.options[e.selectedIndex].value;
-      console.log(strUser);
-      for (var i = 0; i < array.length; i++) {
-        console.log(array[i]);
-        //this.oscillator = this._audioContext.createOscillator();
-        this.oscillator.type = strUser;
-        this.oscillator.frequency.value = array[1];
-        this.oscillator.start(0);
-        this.oscillator.stop(0 + 0.5);
-        this.oscillator.connect(this._audioContext.destination);
-      }
-    }
-
-    _stopMusic(freq) {
-      this.oscillator.start(0);
-      this.oscillator.stop(0);
-      this.oscillator.disconnect();
+    _playNotes(context, notes, instrument, filter, ) {
+      notes.reduce((offset, [frequency, duration]) => {
+        this.oscillatorNode = this._audioContext.createOscillator();
+        //console.log("Offset: ", offset);
+        //console.log("Frequency: ", frequency);
+        //console.log("Duration: ", duration);
+        this.filterNode = this._audioContext.createBiquadFilter();
+        this.filterNode.type = filter;
+        this.filterNode.frequency.value = 300;
+        this.filterNode.Q.value = 0.1;
+        this.oscillatorNode.frequency.value = frequency;
+        this.oscillatorNode.type = instrument;
+        this.oscillatorNode.connect(this.filterNode);
+        this.filterNode.connect(this._audioContext.destination);
+        this.oscillatorNode.start(offset);
+        this.oscillatorNode.stop((offset + duration));
+        return offset + duration;
+      }, this._audioContext.currentTime);
     }
 
     /* *************************************** Music playing end *************************************** */
@@ -483,22 +519,22 @@
         audio: true,
         video: false
       };
-      if (!this._isRecording) this._getUserMedia();
+      if (!this._isRecording) {
+        this._getUserMedia();
+      }
       this._isRecording = true;
-      this.t = setInterval(this._updatePitch.bind(this), 500);
-      //this._updatePitch();
+      this.t = setInterval(this._updatePitch.bind(this), 450);
       if (this._isRecording) return;
-      //this._isRecording = true;
-    }
+  }
 
-    stopRecording() {
-      this._isRecording = false;
-    }
+  stopRecording() {
+    this._isRecording = false;
+  }
 
-    cleanup() {
-      //console.log("cleanup called");
-      this._audioContext.close();
-    }
+  cleanup() {
+    //console.log("cleanup called");
+    this._audioContext.close();
+  }
 
   }
 
@@ -517,12 +553,43 @@
       mic._drawStave();
       mic._enableButton("record");
       mic._disableButton("addTrack");
-      mic._disableButton("play");
-      mic._disableButton("pause");
+      mic._disableButton("playAll");
       mic.noteNumber = 0;
       mic.noteArray = [];
       mic.numOfStaves = 0;
       mic.lineCount = 0;
+      if (mic.currentCanvas == 1) {
+        mic._disableButton("instruments1");
+        mic._disableButton("save1");
+        mic._disableButton("play1");
+        mic._disableButton('clear1');
+        mic._disableButton('saveTypes1');
+        mic._disableButton('filter1');
+      }
+      if (mic.currentCanvas == 2) {
+        mic._disableButton("instruments2");
+        mic._disableButton("save2");
+        mic._disableButton("play2");
+        mic._disableButton('clear2');
+        mic._disableButton('saveTypes2');
+        mic._disableButton('filter2');
+      }
+      if (mic.currentCanvas == 3) {
+        mic._disableButton("instruments3");
+        mic._disableButton("save3");
+        mic._disableButton("play3");
+        mic._disableButton('clear3');
+        mic._disableButton('saveTypes3');
+        mic._disableButton('filter3');
+      }
+      if (mic.currentCanvas == 4) {
+        mic._disableButton("instruments4");
+        mic._disableButton("save4");
+        mic._disableButton("play4");
+        mic._disableButton('clear4');
+        mic._disableButton('saveTypes4');
+        mic._disableButton('filter4');
+      }
     } else {
       alert("Can't add more than 4 parallel tracks!")
     }
@@ -532,7 +599,7 @@
     //console.log("record was clicked");
     //mic.numOfStaves = 0;
     //mic.lineCount = 0;
-    this.arrayNumber = 0;
+    mic.arrayNumber = 0;
     mic._enableButton("stop");
     mic._disableButton("addTrack");
     mic._redButton("record");
@@ -542,86 +609,134 @@
   function stop() {
     //console.log("stop was clicked");
     mic.stopRecording();
-    mic._enableButton("play");
+    mic._enableButton("playAll");
     mic._enableButton("addTrack");
     mic._disableButton("record");
     mic._disableButton("stop");
     mic._enableButton("record");
     globalStream.getAudioTracks()[0].stop();
     if (mic.currentCanvas == 1) {
-
+      mic._enableButton("instruments1");
+      mic._enableButton("save1");
+      mic._enableButton("play1");
+      mic._enableButton('clear1');
+      mic._enableButton('saveTypes1');
+      mic._enableButton('filter1');
     }
     if (mic.currentCanvas == 2) {
-
+      mic._enableButton("instruments2");
+      mic._enableButton("save2");
+      mic._enableButton("play2");
+      mic._enableButton('clear2');
+      mic._enableButton('saveTypes2');
+      mic._enableButton('filter2');
     }
     if (mic.currentCanvas == 3) {
-
+      mic._enableButton("instruments3");
+      mic._enableButton("save3");
+      mic._enableButton("play3");
+      mic._enableButton('clear3');
+      mic._enableButton('saveTypes3');
+      mic._enableButton('filter3');
     }
     if (mic.currentCanvas == 4) {
-
+      mic._enableButton("instruments4");
+      mic._enableButton("save4");
+      mic._enableButton("play4");
+      mic._enableButton('clear4');
+      mic._enableButton('saveTypes4');
+      mic._enableButton('filter4');
     }
   }
 
   function play() {
-    console.log("play was clicked");
-    mic._enableButton("pause");
-    mic._disableButton("play");
-
-    function playNotes(context, notes) {
-      notes.reduce((offset, [frequency, duration]) => {
-        const oscillatorNode = context.createOscillator();
-        console.log("Offset: ", offset);
-        console.log("Frequency: ", frequency);
-        console.log("Duration: ", duration);
-        oscillatorNode.frequency.value = frequency;
-        oscillatorNode.type = strUser;
-        oscillatorNode.start(offset);
-        oscillatorNode.stop(offset + duration);
-        oscillatorNode.connect(context.destination);
-        return offset + duration;
-      }, context.currentTime);
-    }
-    const audioContext = new AudioContext();
+    const audioContext = mic.audioContext;
     if (mic.currentCanvas == 1) {
       var e = document.getElementById("instruments1");
       var strUser = e.options[e.selectedIndex].value;
-      playNotes(audioContext, mic.NOTES1);
+      var d = document.getElementById("filter1");
+      var filter = d.options[d.selectedIndex].value;
+      mic._playNotes(audioContext, mic.NOTES1, strUser, filter);
     } else if (mic.currentCanvas == 2) {
       var e = document.getElementById("instruments2");
       var strUser = e.options[e.selectedIndex].value;
-      playNotes(audioContext, mic.NOTES2);
+      var d = document.getElementById("filter2");
+      var filter = d.options[d.selectedIndex].value;
+      mic._playNotes(audioContext, mic.NOTES2, strUser, filter);
     } else if (mic.currentCanvas == 3) {
       var e = document.getElementById("instruments3");
       var strUser = e.options[e.selectedIndex].value;
-      playNotes(audioContext, mic.NOTES3);
+      var d = document.getElementById("filter3");
+      var filter = d.options[d.selectedIndex].value;
+      mic._playNotes(audioContext, mic.NOTES3, strUser, filter);
     } else if (mic.currentCanvas == 4) {
       var e = document.getElementById("instruments4");
       var strUser = e.options[e.selectedIndex].value;
-      playNotes(audioContext, mic.NOTES4);
+      var d = document.getElementById("filter4");
+      var filter = d.options[d.selectedIndex].value;
+      mic._playNotes(audioContext, mic.NOTES4, strUser, filter);
     }
-    /*
-    var audio = new Audio('https://interactive-examples.mdn.mozilla.net/media/examples/t-rex-roar.mp3');
-      audio.play();
-      */
-
-  }
-
-  function pause() {
-    mic._disableButton("pause");
-    mic._enableButton("play");
-    mic._stopMusic();
   }
 
   function save() {
-    //console.log("Save pressed");
-    let csvContent = "data:text/csv;charset=utf-8," +
-      mic.NOTES.map(e => e.join(",")).join("\n");
-    var encodedUri = encodeURI(csvContent);
+    if (mic.currentCanvas == 1) {
+      var e = document.getElementById("saveTypes1");
+      var type = e.options[e.selectedIndex].value;
+      if (type == "CSV") {
+        let csvContent = "data:text/csv;charset=utf-8," +
+          mic.NOTES1.map(e => e.join(",")).join("\n");
+        var encodedUri = encodeURI(csvContent);
+      } else if (type == "PNG") {
+        var canvas = document.getElementById("canvas1");
+        canvasCtx = canvas.getContext("2d");
+        var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you dont replace you will get a DOM 18 exception.
+        window.location.href = image; // it will save locally
+      }
+    } else if (mic.currentCanvas == 2) {
+      var e = document.getElementById("saveTypes2");
+      var type = e.options[e.selectedIndex].value;
+      if (type == "CSV") {
+        let csvContent = "data:text/csv;charset=utf-8," +
+          mic.NOTES2.map(e => e.join(",")).join("\n");
+        var encodedUri = encodeURI(csvContent);
+      } else if (type == "PNG") {
+        var canvas = document.getElementById("canvas2");
+        canvasCtx = canvas.getContext("2d");
+        var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you dont replace you will get a DOM 18 exception.
+        window.location.href = image; // it will save locally
+      }
+    } else if (mic.currentCanvas == 3) {
+      var e = document.getElementById("saveTypes3");
+      var type = e.options[e.selectedIndex].value;
+      if (type == "CSV") {
+        let csvContent = "data:text/csv;charset=utf-8," +
+          mic.NOTES3.map(e => e.join(",")).join("\n");
+        var encodedUri = encodeURI(csvContent);
+      } else if (type == "PNG") {
+        var canvas = document.getElementById("canvas3");
+        canvasCtx = canvas.getContext("2d");
+        var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you dont replace you will get a DOM 18 exception.
+        window.location.href = image; // it will save locally
+      }
+    } else if (mic.currentCanvas == 4) {
+      var e = document.getElementById("saveTypes4");
+      var type = e.options[e.selectedIndex].value;
+      if (type == "CSV") {
+        let csvContent = "data:text/csv;charset=utf-8," +
+          mic.NOTES4.map(e => e.join(",")).join("\n");
+        var encodedUri = encodeURI(csvContent);
+      } else if (type == "PNG") {
+        var canvas = document.getElementById("canvas4");
+        canvasCtx = canvas.getContext("2d");
+        var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you dont replace you will get a DOM 18 exception.
+        window.location.href = image; // it will save locally
+      }
+    }
     window.open(encodedUri);
   }
 
   function show(num) {
-    //console.log("show was clicked");
+    console.log("show was clicked");
     //console.log(num);
     if (mic.currentCanvas == 1) {
       mic.canvasContainer = document.getElementById('canvasContainer1');
@@ -653,4 +768,83 @@
       mic._highlightCanvas();
       mic.currentCanvas = 4;
     }
+  }
+
+  function playAll() {
+    console.log("playAll Called");
+    //mic._disableButton("play");
+    const audioContext = mic.audioContext;
+    var e1 = document.getElementById("instruments1");
+    var strUser1 = e1.options[e1.selectedIndex].value;
+    mic._playNotes(audioContext, mic.NOTES1, strUser1);
+
+    var e2 = document.getElementById("instruments2");
+    var strUser2 = e2.options[e2.selectedIndex].value;
+    mic._playNotes(audioContext, mic.NOTES2, strUser2);
+
+    var e3 = document.getElementById("instruments3");
+    var strUser3 = e3.options[e3.selectedIndex].value;
+    mic._playNotes(audioContext, mic.NOTES3, strUser3);
+
+    var e4 = document.getElementById("instruments4");
+    var strUser4 = e4.options[e4.selectedIndex].value;
+    mic._playNotes(audioContext, mic.NOTES4, strUser4);
+  }
+
+  function clearBars() {
+    console.log("Clear Called");
+    mic.noteNumber = 0;
+    mic.noteArray = [];
+    mic.numOfStaves = 0;
+    mic.lineCount = 0;
+    if (mic.currentCanvas == 1) {
+      mic._clearCanvas(1);
+      mic.numberOfCanvases = 1;
+      mic.currentCanvas = 1;
+      mic._addCanvas();
+      mic._drawStave();
+    } else if (mic.currentCanvas == 2) {
+      mic._clearCanvas(2);
+      mic.numberOfCanvases = 2;
+      mic.currentCanvas = 2;
+      mic._addCanvas();
+      mic._drawStave();
+    } else if (mic.currentCanvas == 3) {
+      mic._clearCanvas(3);
+      mic.numberOfCanvases = 3;
+      mic.currentCanvas = 3;
+      mic._addCanvas();
+      mic._drawStave();
+    } else if (mic.currentCanvas == 4) {
+      mic._clearCanvas(4);
+      mic.numberOfCanvases = 4;
+      mic.currentCanvas = 4;
+      mic._addCanvas();
+      mic._drawStave();
+    }
+  }
+
+  function playMP3()
+  {
+    /*
+    var audio = new Audio();
+    audio.src = 'audio files/A4.mp3';
+    audio.controls = true;
+    audio.autoplay = true;
+    document.body.appendChild(audio);
+
+    var context = new AudioContext();
+    var analyser = context.createAnalyser();
+
+    window.addEventListener('load', function(e) {
+    // Our <audio> element will be the audio source.
+    var source = context.createMediaElementSource(audio);
+    source.connect(analyser);
+    analyser.connect(context.destination);
+    }, false);
+      */
+    //var audio = new Audio('https://interactive-examples.mdn.mozilla.net/media/examples/t-rex-roar.mp3');
+      mic.PA4.play();
+      mic.PC5.play();
+      mic.PE5.play();
   }

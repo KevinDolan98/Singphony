@@ -62,6 +62,7 @@ body{
   color: white;
   transition: 0.25s;
   border-radius: 24px;
+  pointer-events: none;
 }
 
 .button2:hover{
@@ -232,4 +233,10 @@ body{
   color: white;
   transition: 0.25s;
   border-radius: 24px;
+}
+
+.gap{
+  text-align: center;
+  width: 1210px;
+  height: 250px;
 }
