@@ -72,6 +72,7 @@ body{
 .button3{
   width: 0px;
   height: 0px;
+  pointer-events: none;
 }
 
 .logo {
@@ -207,6 +208,7 @@ body{
   width: 0px;
   height: 0px;
   opacity: 0.0;
+  pointer-events: none;
 }
 
 .title {
