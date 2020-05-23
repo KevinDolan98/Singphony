@@ -1,6 +1,5 @@
   // Global variables
   var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
-  var updatePitch;
   var globalStream;
 
   // Set up Microphone class
@@ -37,7 +36,6 @@
       this.NOTES2 = [];
       this.NOTES3 = [];
       this.NOTES4 = []; //[ 783.99, 0.5 ], [ 0, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.5 ], [ 0, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.25 ], [ 987.77, 0.25 ], [ 1174.7, 0.25] ];
-
       this.noteStrings = [{
           "note": "D4",
           "minfrequency": 278,
@@ -115,24 +113,12 @@
           "frequency":783.99,
           "ycoordinate": 5
         },
-      ]; //
-
+      ];
       this.MIN_SAMPLES = 0; // will be initialized when AudioContext is created.
       this.GOOD_ENOUGH_CORRELATION = 0.9; // this is the "bar" for how close a correlation needs to be
       this._disableButton('record');
       this._disableButton('stop');
       this._disableButton('playAll');
-      this.PD4 = new Audio('Sounds/D4.mp3');
-      this.PE4 = new Audio('Sounds/E4.mp3');
-      this.PF4 = new Audio('Sounds/F4.mp3');
-      this.PG4 = new Audio('Sounds/G4.mp3');
-      this.PA4 = new Audio('Sounds/A4.mp3');
-      this.PB4 = new Audio('Sounds/B4.mp3');
-      this.PC5 = new Audio('Sounds/C5.mp3');
-      this.PD5 = new Audio('Sounds/D5.mp3');
-      this.PE5 = new Audio('Sounds/E5.mp3');
-      this.PF5 = new Audio('Sounds/F5.mp3');
-      this.PG5 = new Audio('Sounds/G5.mp3');
       /* ****************************** Autocorrelation Initialisations end ****************************** */
       this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
     };
@@ -153,8 +139,7 @@
     }
 
     /* *************************************** Get access to users microphone start *************************************** */
-    _getUserMedia() {
-      // Get microphone access
+    _getUserMedia() { // Get microphone access
       if (navigator.mediaDevices || navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia(this.options).then((stream) => { // request access to the users microphone and set up a stream
           globalStream = stream;
@@ -208,16 +193,7 @@
           }
         } else if (foundGoodCorrelation) {
           // short-circuit - we found a good correlation, then a bad one, so we'd just be seeing copies from here.
-          // Now we need to tweak the offset - by interpolating between the values to the left and right of the
-          // best offset, and shifting it a bit.  This is complex, and HACKY in this code (happy to take PRs!) -
-          // we need to do a curve fit on correlations[] around best_offset in order to better determine precise
-          // (anti-aliased) offset.
-
-          // we know best_offset >=1,
-          // since foundGoodCorrelation cannot go to true until the second pass (offset=1), and
-          // we can't drop into this clause until the following pass (else if).
-          //var shift = (correlations[best_offset + 1] - correlations[best_offset - 1]) / correlations[best_offset];
-          return sampleRate / best_offset; // + (8 * shift));
+          return sampleRate / best_offset;
         }
         lastCorrelation = correlation; // set lastCorrelation to latest correlation
       }
@@ -225,15 +201,12 @@
 
       }
       return -1;
-      //	var best_frequency = sampleRate/best_offset;
     }
 
     _updatePitch() {
       this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
       var ac = this._autoCorrelate(this.buf, this._audioContext.sampleRate); // call the _autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
-      console.log("Frequency: ", ac);
       if (ac >= 278 && ac <= 833) {
-        console.log("LOOP ENTERED");
         this.noteArray.push(ac);
         this._drawNote(this.noteArray);
       } else if (ac == -1) {
@@ -251,15 +224,6 @@
       if (!this._isRecording) {
         clearInterval(this.t);
       }
-      /*
-      if(this._isRecording)
-      {
-      requestAnimationFrame(() => this._updatePitch());
-    }
-    else {
-      return;
-    }
-    */
     }
     /* *************************************** Autocorrelation algorithm end *************************************** */
 
@@ -291,11 +255,9 @@
     }
 
     _drawNote(array) {
-      console.log("Draw Note called!!!");
       for (var x = 0; x < this.noteStrings.length; x++) {
         if (array[this.arrayNumber] >= this.noteStrings[x]["minfrequency"] && array[this.arrayNumber] <= this.noteStrings[x]["maxfrequency"]) // E5
         {
-          console.log("Draw Note LOOP Entered!!!");
           this.canvasCtx.fillStyle = 'black';
           this.canvasCtx.beginPath();
           this.canvasCtx.arc(35 + (this.noteOffset * this.noteNumber), (this.noteStrings[x].ycoordinate) + (this.lineCount * this.Offset), 5, 0, 360, false);
@@ -303,7 +265,6 @@
           this.xcoordinate1 = 35 + (this.noteOffset * this.noteNumber);
           this.noteNumber++;
           this.arrayNumber++;
-          console.log("X: ", this.xcoordinate1);
           if (this.currentCanvas == 1) {
             this.NOTES1.push([this.noteStrings[x].frequency, 0.5]);
           } else if (this.currentCanvas == 2) {
@@ -313,8 +274,6 @@
           } else if (this.currentCanvas == 4) {
             this.NOTES4.push([this.noteStrings[x].frequency, 0.5]);
           }
-          //console.log("Line number: ", this.lineCount);
-          //console.log("xcoordinate1: ", this.xcoordinate1);
           if (this.xcoordinate1 == 985) {
             this.lineCount++;
             this.noteNumber = 0;
@@ -361,8 +320,7 @@
     /* *************************************** Disable and enable canvas start *************************************** */
 
     _addCanvas() {
-      if (this.numberOfCanvases == 1) {
-        // set up canvas context for visualizer
+      if (this.numberOfCanvases == 1) { // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer1');
         this.canvas = document.getElementById('canvas1');
         this.canvasCtx = this.canvas.getContext("2d");
@@ -373,7 +331,6 @@
         this.canvasContainer.classList.remove("canvas-container3");
         this.canvasContainer.classList.add("canvas-container1");
       } else if (this.numberOfCanvases == 2) {
-        // set up canvas context for visualizer
         this._greyCanvas();
         this.canvasContainer = document.getElementById('canvasContainer2');
         this.canvas = document.getElementById('canvas2');
@@ -385,7 +342,6 @@
         this.canvasContainer.classList.remove("canvas-container3");
         this.canvasContainer.classList.add("canvas-container1");
       } else if (this.numberOfCanvases == 3) {
-        // set up canvas context for visualizer
         this._greyCanvas();
         this.canvasContainer = document.getElementById('canvasContainer3');
         this.canvas = document.getElementById('canvas3');
@@ -397,7 +353,6 @@
         this.canvasContainer.classList.remove("canvas-container3");
         this.canvasContainer.classList.add("canvas-container1");
       } else if (this.numberOfCanvases == 4) {
-        // set up canvas context for visualizer
         this._greyCanvas();
         this.canvasContainer = document.getElementById('canvasContainer4');
         this.canvas = document.getElementById('canvas4');
@@ -441,23 +396,19 @@
     }
 
     _highlightCanvas() {
-      if (this.numberOfCanvases == 1) {
-        // set up canvas context for visualizer
+      if (this.numberOfCanvases == 1) { // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer1');
         this.canvasContainer.classList.remove("canvas-container2");
         this.canvasContainer.classList.add("canvas-container1");
       } else if (this.numberOfCanvases == 2) {
-        // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer2');
         this.canvasContainer.classList.remove("canvas-container2");
         this.canvasContainer.classList.add("canvas-container1");
       } else if (this.numberOfCanvases == 3) {
-        // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer3');
         this.canvasContainer.classList.remove("canvas-container2");
         this.canvasContainer.classList.add("canvas-container1");
       } else if (this.numberOfCanvases == 4) {
-        // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer4');
         this.canvasContainer.classList.remove("canvas-container2");
         this.canvasContainer.classList.add("canvas-container1");
@@ -494,9 +445,6 @@
     _playNotes(context, notes, instrument, filter, ) {
       notes.reduce((offset, [frequency, duration]) => {
         this.oscillatorNode = this._audioContext.createOscillator();
-        //console.log("Offset: ", offset);
-        //console.log("Frequency: ", frequency);
-        //console.log("Duration: ", duration);
         this.filterNode = this._audioContext.createBiquadFilter();
         this.filterNode.type = filter;
         this.filterNode.frequency.value = 300;
@@ -514,7 +462,6 @@
     /* *************************************** Music playing end *************************************** */
 
     startRecording() {
-      //console.log("startRecording called");
       this.options = {
         audio: true,
         video: false
@@ -532,7 +479,6 @@
   }
 
   cleanup() {
-    //console.log("cleanup called");
     this._audioContext.close();
   }
 
@@ -545,7 +491,6 @@
   var mic = new Microphone(); // Create a mic object
 
   function addTrack() {
-    //console.log("addTrack was clicked");
     if (mic.numberOfCanvases < 4) {
       mic.numberOfCanvases++
       mic.currentCanvas++;
@@ -596,9 +541,6 @@
   }
 
   function record() {
-    //console.log("record was clicked");
-    //mic.numOfStaves = 0;
-    //mic.lineCount = 0;
     mic.arrayNumber = 0;
     mic._enableButton("stop");
     mic._disableButton("addTrack");
@@ -607,7 +549,6 @@
   }
 
   function stop() {
-    //console.log("stop was clicked");
     mic.stopRecording();
     mic._enableButton("playAll");
     mic._enableButton("addTrack");
@@ -736,8 +677,6 @@
   }
 
   function show(num) {
-    console.log("show was clicked");
-    //console.log(num);
     if (mic.currentCanvas == 1) {
       mic.canvasContainer = document.getElementById('canvasContainer1');
       mic._greyCanvas();
@@ -771,8 +710,6 @@
   }
 
   function playAll() {
-    console.log("playAll Called");
-    //mic._disableButton("play");
     const audioContext = mic.audioContext;
     var e1 = document.getElementById("instruments1");
     var strUser1 = e1.options[e1.selectedIndex].value;
@@ -792,7 +729,6 @@
   }
 
   function clearBars() {
-    console.log("Clear Called");
     mic.noteNumber = 0;
     mic.noteArray = [];
     mic.numOfStaves = 0;
@@ -822,29 +758,4 @@
       mic._addCanvas();
       mic._drawStave();
     }
-  }
-
-  function playMP3()
-  {
-    /*
-    var audio = new Audio();
-    audio.src = 'audio files/A4.mp3';
-    audio.controls = true;
-    audio.autoplay = true;
-    document.body.appendChild(audio);
-
-    var context = new AudioContext();
-    var analyser = context.createAnalyser();
-
-    window.addEventListener('load', function(e) {
-    // Our <audio> element will be the audio source.
-    var source = context.createMediaElementSource(audio);
-    source.connect(analyser);
-    analyser.connect(context.destination);
-    }, false);
-      */
-    //var audio = new Audio('https://interactive-examples.mdn.mozilla.net/media/examples/t-rex-roar.mp3');
-      mic.PA4.play();
-      mic.PC5.play();
-      mic.PE5.play();
   }
