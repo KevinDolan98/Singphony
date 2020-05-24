@@ -12,115 +12,110 @@
       this._streamSource = null; // initialise the streamsource to null
       this._isRecording = false; // flag to say if a recording is recording or not
       this.numberOfCanvases = 0; // USed as a global counter of how many tracks there are in the _addCanvas, _highlightCanvas and show functions
-      this.currentCanvas = 0;
+      this.currentCanvas = 0; // Counter that keeps track of the currently selected canvas
       this.options = {}; // Options that set audio true and are sent to the getUserMedia function
-      this.noteOffset = 10; //
-      this.noteNumber = 0;
-      this.windowArray = [];
-      this.oscillator = this._audioContext.createOscillator();
+      this.noteOffset = 10; // Offset value used for note rendering, its the distance between the centre of each note
+      this.noteNumber = 0; // Counter value that keeps track of the number of notes on the current stave line, used for rendering
       /* ****************************** Autocorrelation Initialisations start ****************************** */
-      this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node
-      this._analyserAudioNode.fftSize = 32768;
-      this.rafID = null; // this is currently not used (need to fix the this/window problem)
-      this.buflen = 4096; //
-      this.buf = new Float32Array(this.buflen);
-      this.noteArray = new Array();
-      this.xcoordinate1 = 30;
-      this.numOfStaves = 0;
-      this.lineCount = 0;
-      this.staveOffset = 20;
-      this.Offset = 75;
-      this.arrayNumber = 0;
-      this.t;
-      this.NOTES1 = [];
-      this.NOTES2 = [];
-      this.NOTES3 = [];
-      this.NOTES4 = []; //[ 783.99, 0.5 ], [ 0, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.5 ], [ 0, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.25 ], [ 587.33, 0.25 ], [ 783.99, 0.25 ], [ 987.77, 0.25 ], [ 1174.7, 0.25] ];
-      this.noteStrings = [{
-          "note": "D4",
-          "minfrequency": 278,
-          "maxfrequency": 311.99,
-          "frequency":293.66,
-          "ycoordinate": 55
+      this._analyserAudioNode = this._audioContext.createAnalyser(); // create an analyser node in order to get info from the audio buffers
+      this._analyserAudioNode.fftSize = 8192; // set the fftSize of the analyser node to twice the size of the audio buffer in order for getFloatTimeDomainData function to work
+      this.buf = new Float32Array(this._bufferLength); // create a buffer which can hold 4096 samples, this buffer will hold the audio data
+      this.noteArray = new Array(); // create an array to hold extracted frequency values which will be used for rendering notes on screen
+      this.xcoordinate1 = 30; // initialise the x coordinate to 30, this is the initial x coordinate of the first note
+      this.numOfStaves = 0; // counter value of the number of staves, initialised to 0
+      this.lineCount = 0; // counter value of the current stave line, initialised to 0
+      this.staveOffset = 20; // offset between staves, used for rendering staves
+      this.Offset = 75; // offset between notes on different stave lines
+      this.arrayNumber = 0; // counter value for current number in the noteArray
+      this.repeat; // global variable used to call the detectPitch function repeatedly
+      this.NOTES1 = []; // array to hold the notes and timings of the extrated melody from track 1
+      this.NOTES2 = []; // array to hold the notes and timings of the extrated melody from track 2
+      this.NOTES3 = []; // array to hold the notes and timings of the extrated melody from track 3
+      this.NOTES4 = []; // array to hold the notes and timings of the extrated melody from track 4
+      this.noteStrings = [{ // an array of note objects which hold details of musical notes for comparison with the frequencies detected in the detectPitch function
+          "note": "D4", // note name
+          "minfrequency": 278, // minimum frequency value
+          "maxfrequency": 311.99, // maximum frequency value
+          "frequency": 293.66, // exact frequency value according to the equal tempered scale, this value is passed into the NOTESX array for playback
+          "ycoordinate": 55 // y coordinate value used to render the note on screen
         },
         {
           "note": "E4",
           "minfrequency": 312,
           "maxfrequency": 340.99,
-          "frequency":329.63,
+          "frequency": 329.63,
           "ycoordinate": 50
         },
         {
           "note": "F4",
           "minfrequency": 341,
           "maxfrequency": 371.99,
-          "frequency":349.23,
+          "frequency": 349.23,
           "ycoordinate": 45
         },
         {
           "note": "G4",
           "minfrequency": 372,
           "maxfrequency": 416.99,
-          "frequency":392,
+          "frequency": 392,
           "ycoordinate": 40
         },
         {
           "note": "A4",
           "minfrequency": 417,
           "maxfrequency": 467.99,
-          "frequency":440,
+          "frequency": 440,
           "ycoordinate": 35
         },
         {
           "note": "B4",
           "minfrequency": 468,
           "maxfrequency": 509.99,
-          "frequency":493.88,
+          "frequency": 493.88,
           "ycoordinate": 30
         },
         {
           "note": "C5",
           "minfrequency": 510,
           "maxfrequency": 556.99,
-          "frequency":523.25,
+          "frequency": 523.25,
           "ycoordinate": 25
         },
         {
           "note": "D5",
           "minfrequency": 557,
           "maxfrequency": 624.99,
-          "frequency":587.33,
+          "frequency": 587.33,
           "ycoordinate": 20
         },
         {
           "note": "E5",
           "minfrequency": 625,
           "maxfrequency": 679.99,
-          "frequency":659.25,
+          "frequency": 659.25,
           "ycoordinate": 15
         },
         {
           "note": "F5",
           "minfrequency": 680,
           "maxfrequency": 742.99,
-          "frequency":698.46,
+          "frequency": 698.46,
           "ycoordinate": 10
         },
         {
           "note": "G5",
           "minfrequency": 743,
           "maxfrequency": 832.99,
-          "frequency":783.99,
+          "frequency": 783.99,
           "ycoordinate": 5
         },
       ];
-      this.MIN_SAMPLES = 0; // will be initialized when AudioContext is created.
-      this.GOOD_ENOUGH_CORRELATION = 0.9; // this is the "bar" for how close a correlation needs to be
-      this._disableButton('record');
-      this._disableButton('stop');
-      this._disableButton('playAll');
+      this.GOOD_ENOUGH_CORRELATION = 0.9; // this is the "bar" for how close a correlation needs to be to be considered good enough
+      this._disableButton('record'); // diable the record button
+      this._disableButton('stop'); // diable the record button
+      this._disableButton('playAll'); // diable the record button
       /* ****************************** Autocorrelation Initialisations end ****************************** */
-      this._validateSettings(); // call _validateSettings function to check if the sample right is within an appropriate range
+      this._validateSettings(); // call _validateSettings function to check if the sample rate and buffer size is within an appropriate range
     };
 
     _validateSettings() {
@@ -142,7 +137,7 @@
     _getUserMedia() { // Get microphone access
       if (navigator.mediaDevices || navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia(this.options).then((stream) => { // request access to the users microphone and set up a stream
-          globalStream = stream;
+          globalStream = stream; // set stream equal to the global variable globalstream so the audio stream can be stopped in a different function
           this._streamSource = this._audioContext.createMediaStreamSource(globalStream); // create a stream source
           this._streamSource.connect(this._analyserAudioNode); // connect the stream source to the analyser node
         }).catch((e) => {
@@ -158,7 +153,7 @@
 
 
     /* *************************************** Autocorrelation algorithm start *************************************** */
-    _autoCorrelate(buf, sampleRate) {
+    _AMDF(buf, sampleRate) {
       var SIZE = buf.length; // set SIZE variable equal to buffer length 4096 => half a second
       var MAX_SAMPLES = Math.floor(SIZE / 2); // set MAX_SAMPLES = 4096/2 = 2048
       var best_offset = -1; // initialise best_offset to -1
@@ -176,10 +171,10 @@
         return -1;
 
       var lastCorrelation = 1; // initialise lastCorrelation to 1 so that the first check won't be the best correlation
-      for (var offset = 52; offset < 160; offset++) { // offset initialised to 0, goes through a for loop from 0 to 512 [for (var offset = this.MIN_SAMPLES; offset < MAX_SAMPLES; offset++)]
+      for (var offset = 52; offset < 160; offset++) { // offset initialised to 52, goes through a for loop from 52 to 160, which will cover the notes that Singphony can render
         var correlation = 0; // re-set correlation to 0 at each offset value
 
-        for (var i = 0; i < MAX_SAMPLES; i++) { // cycle through from 0 to 512  MAX_SAMPLES!!!!!!!!!!
+        for (var i = 0; i < MAX_SAMPLES; i++) { // cycle through from 0 to 2048
           correlation += Math.abs((buf[i]) - (buf[i + offset])); // step through at each value and subtract the value at the offset from the value in the original buffer and keep adding that to the correlation value
         } // correlation will be a large enough positive float
 
@@ -197,19 +192,16 @@
         }
         lastCorrelation = correlation; // set lastCorrelation to latest correlation
       }
-      if (best_correlation > 0.01) {
-
-      }
       return -1;
     }
 
-    _updatePitch() {
+    _detectPitch() {
       this._analyserAudioNode.getFloatTimeDomainData(this.buf); // get the time domain information of buf which is a float32array of 1024 values... currently empty??
-      var ac = this._autoCorrelate(this.buf, this._audioContext.sampleRate); // call the _autoCorrelate function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
-      if (ac >= 278 && ac <= 833) {
+      var ac = this._AMDF(this.buf, this._audioContext.sampleRate); // call the _AMDF function sending it in the buf array and the audioContext sample rate, set the return value equal to ac
+      if (ac >= 278 && ac <= 833) { // if the detected pitch is within range then add the frequency to the noteArray and pass that array to the drawNote function
         this.noteArray.push(ac);
         this._drawNote(this.noteArray);
-      } else if (ac == -1) {
+      } else if (ac == -1) { // if the detected pitch is not in range or if there wasn't enough signal then draw a rest and add 0 to the NOTESX array
         this._drawRest();
         if (this.currentCanvas == 1) {
           this.NOTES1.push([0, 0.5]);
@@ -221,14 +213,14 @@
           this.NOTES4.push([0, 0.5]);
         }
       }
-      if (!this._isRecording) {
-        clearInterval(this.t);
+      if (!this._isRecording) { //
+        clearInterval(this.repeat);
       }
     }
     /* *************************************** Autocorrelation algorithm end *************************************** */
 
     /* *************************************** Note rendering start *************************************** */
-    _drawStave() {
+    _drawStave() { // function to draw the stave, 5 lines of 12 bars - equaling 4 minutes per track
       var barLength = 80;
       this.numOfStaves = 0;
       this.canvasCtx.canvas.height = 360;
@@ -248,13 +240,13 @@
       }
     }
 
-    _drawLine(x1, y1, x2, y2) {
+    _drawLine(x1, y1, x2, y2) { // draw line function from (x1,y1) to (x2,y2)
       this.canvasCtx.moveTo(x1, y1 + (this.numberOfTracks * this.canvasOffset)); // start at point x=5 y=10
       this.canvasCtx.lineTo(x2, y2 + (this.numberOfTracks * this.canvasOffset)); // create line from point x=5 y=10 to x=795 y=10
       this.canvasCtx.stroke(); // draw path to canvas
     }
 
-    _drawNote(array) {
+    _drawNote(array) { // draw note function, takes the frequency array from detect pitch function as an input and compares the newest frequency against the array of note objects in the constructor and renders the note
       for (var x = 0; x < this.noteStrings.length; x++) {
         if (array[this.arrayNumber] >= this.noteStrings[x]["minfrequency"] && array[this.arrayNumber] <= this.noteStrings[x]["maxfrequency"]) // E5
         {
@@ -291,7 +283,7 @@
       }
     }
 
-    _drawRest() {
+    _drawRest() { // draw rest function draws a rest at a predefine location
       var x1 = 35 + (this.noteOffset * this.noteNumber);
       var x2 = 40 + (this.noteOffset * this.noteNumber);
       var y = 25 + (this.lineCount * this.Offset)
@@ -319,7 +311,7 @@
 
     /* *************************************** Disable and enable canvas start *************************************** */
 
-    _addCanvas() {
+    _addCanvas() { // add canvas will add a track to the screen by changing the CSS of div elements and buttons, can add up to 4 tracks
       if (this.numberOfCanvases == 1) { // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer1');
         this.canvas = document.getElementById('canvas1');
@@ -366,7 +358,7 @@
       }
     }
 
-    _clearCanvas(canvasNumber) {
+    _clearCanvas(canvasNumber) { // clears the notes on a canvas by clearing the whole canvas then redrawing the stave
       if (canvasNumber == 1) {
         this.canvas = document.getElementById('canvas1');
         this.canvasCtx = this.canvas.getContext("2d");
@@ -390,12 +382,12 @@
       }
     }
 
-    _greyCanvas() {
+    _greyCanvas() { // greys out a track by changing its CSS
       this.canvasContainer.classList.remove("canvas-container1");
       this.canvasContainer.classList.add("canvas-container2");
     }
 
-    _highlightCanvas() {
+    _highlightCanvas() { // highlights a track by changing its CSS
       if (this.numberOfCanvases == 1) { // set up canvas context for visualizer
         this.canvasContainer = document.getElementById('canvasContainer1');
         this.canvasContainer.classList.remove("canvas-container2");
@@ -418,21 +410,21 @@
     /* *************************************** Disable and enable canvas end *************************************** */
 
     /* *************************************** Disable and enable button start *************************************** */
-    _disableButton(id) {
+    _disableButton(id) { // disables button by changing its CSS
       var button = document.getElementById(id);
       button.disabled = true;
       button.classList.remove("button", "button2", "button3");
       button.classList.add("button1");
     }
 
-    _enableButton(id) {
+    _enableButton(id) { // enables button by changing its CSS
       var button = document.getElementById(id);
       button.disabled = false;
       button.classList.remove("button1", "button2", "button3");
       button.classList.add("button");
     }
 
-    _redButton(id) {
+    _redButton(id) { // makes a button red by changing its CSS
       var button = document.getElementById(id);
       button.disabled = true;
       button.classList.remove("button", "button1");
@@ -442,7 +434,7 @@
 
     /* *************************************** Music playing start *************************************** */
 
-    _playNotes(context, notes, instrument, filter, ) {
+    _playNotes(notes, instrument, filter, ) { // this function creates an oscillator and a filter node and plays the NOTESX array thats passed to it
       notes.reduce((offset, [frequency, duration]) => {
         this.oscillatorNode = this._audioContext.createOscillator();
         this.filterNode = this._audioContext.createBiquadFilter();
@@ -470,17 +462,17 @@
         this._getUserMedia();
       }
       this._isRecording = true;
-      this.t = setInterval(this._updatePitch.bind(this), 450);
+      this.repeat = setInterval(this._detectPitch.bind(this), 450);
       if (this._isRecording) return;
-  }
+    }
 
-  stopRecording() {
-    this._isRecording = false;
-  }
+    stopRecording() {
+      this._isRecording = false;
+    }
 
-  cleanup() {
-    this._audioContext.close();
-  }
+    cleanup() {
+      this._audioContext.close();
+    }
 
   }
 
@@ -491,6 +483,7 @@
   var mic = new Microphone(); // Create a mic object
 
   function addTrack() {
+    mic._audioContext.resume();
     if (mic.numberOfCanvases < 4) {
       mic.numberOfCanvases++
       mic.currentCanvas++;
@@ -591,31 +584,30 @@
   }
 
   function play() {
-    const audioContext = mic.audioContext;
     if (mic.currentCanvas == 1) {
       var e = document.getElementById("instruments1");
       var strUser = e.options[e.selectedIndex].value;
       var d = document.getElementById("filter1");
       var filter = d.options[d.selectedIndex].value;
-      mic._playNotes(audioContext, mic.NOTES1, strUser, filter);
+      mic._playNotes(mic.NOTES1, strUser, filter);
     } else if (mic.currentCanvas == 2) {
       var e = document.getElementById("instruments2");
       var strUser = e.options[e.selectedIndex].value;
       var d = document.getElementById("filter2");
       var filter = d.options[d.selectedIndex].value;
-      mic._playNotes(audioContext, mic.NOTES2, strUser, filter);
+      mic._playNotes(mic.NOTES2, strUser, filter);
     } else if (mic.currentCanvas == 3) {
       var e = document.getElementById("instruments3");
       var strUser = e.options[e.selectedIndex].value;
       var d = document.getElementById("filter3");
       var filter = d.options[d.selectedIndex].value;
-      mic._playNotes(audioContext, mic.NOTES3, strUser, filter);
+      mic._playNotes(mic.NOTES3, strUser, filter);
     } else if (mic.currentCanvas == 4) {
       var e = document.getElementById("instruments4");
       var strUser = e.options[e.selectedIndex].value;
       var d = document.getElementById("filter4");
       var filter = d.options[d.selectedIndex].value;
-      mic._playNotes(audioContext, mic.NOTES4, strUser, filter);
+      mic._playNotes(mic.NOTES4, strUser, filter);
     }
   }
 
@@ -710,22 +702,21 @@
   }
 
   function playAll() {
-    const audioContext = mic.audioContext;
     var e1 = document.getElementById("instruments1");
     var strUser1 = e1.options[e1.selectedIndex].value;
-    mic._playNotes(audioContext, mic.NOTES1, strUser1);
+    mic._playNotes(mic.NOTES1, strUser1);
 
     var e2 = document.getElementById("instruments2");
     var strUser2 = e2.options[e2.selectedIndex].value;
-    mic._playNotes(audioContext, mic.NOTES2, strUser2);
+    mic._playNotes(mic.NOTES2, strUser2);
 
     var e3 = document.getElementById("instruments3");
     var strUser3 = e3.options[e3.selectedIndex].value;
-    mic._playNotes(audioContext, mic.NOTES3, strUser3);
+    mic._playNotes(mic.NOTES3, strUser3);
 
     var e4 = document.getElementById("instruments4");
     var strUser4 = e4.options[e4.selectedIndex].value;
-    mic._playNotes(audioContext, mic.NOTES4, strUser4);
+    mic._playNotes(mic.NOTES4, strUser4);
   }
 
   function clearBars() {
