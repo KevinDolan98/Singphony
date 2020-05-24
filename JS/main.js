@@ -1,7 +1,7 @@
   // Global variables
   var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
   var globalStream;
-  var Context = window.AudioContext // Default
+  var AudioContext = window.AudioContext // Default
     ||
     window.webkitAudioContext // Safari and old versions of Chrome
     ||
@@ -13,7 +13,7 @@
     {
       this._sampleRate = sampleRate; // sampleRate is the sampling rate of the microphone
       this._bufferLength = bufferLength; // bufferLength is how long each buffer of audio data is for processing
-      if (Context) {
+      if (AudioContext) {
         this._audioContext = new AudioContext() // set up a new audioContext
       } else {
         // Web Audio API is not supported
