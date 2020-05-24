@@ -1,6 +1,11 @@
   // Global variables
   var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
   var globalStream;
+  var Context = window.AudioContext // Default
+    ||
+    window.webkitAudioContext // Safari and old versions of Chrome
+    ||
+    false;
 
   // Set up Microphone class
   class Microphone {
@@ -8,7 +13,13 @@
     {
       this._sampleRate = sampleRate; // sampleRate is the sampling rate of the microphone
       this._bufferLength = bufferLength; // bufferLength is how long each buffer of audio data is for processing
-      this._audioContext = new AudioContext(); // set up a new audioContext
+      if (Context) {
+        this._audioContext = new AudioContext() // set up a new audioContext
+      } else {
+        // Web Audio API is not supported
+        // Alert the user
+        alert("Sorry, but the Web Audio API is not supported by your browser. Please, consider upgrading to the latest version or downloading Google Chrome or Mozilla Firefox");
+      }
       this._streamSource = null; // initialise the streamsource to null
       this._isRecording = false; // flag to say if a recording is recording or not
       this.numberOfCanvases = 0; // USed as a global counter of how many tracks there are in the _addCanvas, _highlightCanvas and show functions
